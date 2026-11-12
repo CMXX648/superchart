@@ -1680,3 +1680,20 @@ body.market-ashare #tab-forex,
 body.market-crypto #tab-ashare {
   display: none !important;
 }
+
+
+.user-input {
+  width: 88px;
+  padding: 4px 8px;
+  border-radius: 5px;
+}
+
+.server-status {
+  font-size: 11px;
+  color: var(--text-dim);
+  white-space: nowrap;
+}
+
+.server-status.online {
+  color: var(--green);
+}

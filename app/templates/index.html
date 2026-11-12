@@ -9,7 +9,7 @@
     content="Local bar replay with Binance data, Forex, trading simulation, and TradingView-style charting.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/styles.css">
+  <link rel="stylesheet" href="/static/css/styles.css">
 </head>
 
 <body class="market-crypto">
@@ -26,6 +26,8 @@
         <button type="button" class="market-btn active" data-market="crypto">加密货币</button>
         <button type="button" class="market-btn" data-market="ashare">A股</button>
       </div>
+      <input id="lbr-user" class="user-input" type="text" value="local" maxlength="32" title="用户名，交易记录按此写入数据库">
+      <span id="server-status" class="server-status">未连接 Flask</span>
       <div id="tabs" class="tab-group">
         <button class="tab active" data-tab="crypto" id="tab-btn-crypto">Crypto</button>
         <button class="tab" data-tab="forex" id="tab-btn-forex">Forex</button>
@@ -56,7 +58,8 @@
         <option value="hfq">后复权</option>
       </select>
       <button id="btn-fetch-ashare" class="btn-primary" type="button">获取日线</button>
-      <span class="ashare-note">行情服务下一阶段接入。当前只切换交易规则，不会拉取 A 股数据。</span>
+      <label class="ashare-note"><input id="ashare-refresh" type="checkbox"> 强制更新</label>
+      <span class="ashare-note">通过 Flask 读取并写入数据库。未启动服务时不能拉 A 股。</span>
     </div>
 
     <div id="tab-forex" class="tab-content">
@@ -147,11 +150,11 @@
             <b>🧩 Trade Addons</b>
           </div>
           <div id="addon-list" class="addon-list">
-            <label class="addon-toggle"><input type="checkbox" data-addon="addons/maven_prop_firm.js"> 🏢 Maven Prop Firm</label>
-            <label class="addon-toggle"><input type="checkbox" data-addon="addons/full_trade_context.js"> Full Trade Context</label>
-            <label class="addon-toggle"><input type="checkbox" data-addon="addons/example_ema_context.js"> EMA Strategy Context</label>
+            <label class="addon-toggle"><input type="checkbox" data-addon="/static/addons/maven_prop_firm.js"> 🏢 Maven Prop Firm</label>
+            <label class="addon-toggle"><input type="checkbox" data-addon="/static/addons/full_trade_context.js"> Full Trade Context</label>
+            <label class="addon-toggle"><input type="checkbox" data-addon="/static/addons/example_ema_context.js"> EMA Strategy Context</label>
           </div>
-          <div class="addon-hint">Records extra data with each trade. See <a href="ADDON_GUIDE.md"
+          <div class="addon-hint">Records extra data with each trade. See <a href="/docs/ADDON_GUIDE.md"
               style="color:var(--accent)">Addon Guide</a>.</div>
         </div>
 
@@ -283,6 +286,7 @@
         <option value="360">6h</option>
         <option value="720">12h</option>
         <option value="1440">1D</option>
+        <option value="10080">1W</option>
       </select>
     </div>
     <div class="speed-control">
@@ -344,20 +348,21 @@ plot(mySlow, title=&quot;Slow SMA&quot;, color=aqua)"></textarea>
 
   <!-- ═══ Scripts ═══ -->
   <script src="https://unpkg.com/lightweight-charts@5/dist/lightweight-charts.standalone.production.js"></script>
-  <script src="js/db.js"></script>
-  <script src="js/data.js"></script>
-  <script src="js/aggregation.js"></script>
-  <script src="js/indicators.js"></script>
-  <script src="js/pinescript.js"></script>
-  <script src="js/chart.js"></script>
-  <script src="js/rules/crypto.js"></script>
-  <script src="js/rules/ashare.js"></script>
-  <script src="js/trading.js"></script>
-  <script src="js/market.js"></script>
-  <script src="js/tradeaddons.js"></script>
-  <script src="js/replay.js"></script>
-  <script src="js/bridge.js"></script>
-  <script src="js/app.js"></script>
+  <script src="/static/js/db.js"></script>
+  <script src="/static/js/data.js"></script>
+  <script src="/static/js/aggregation.js"></script>
+  <script src="/static/js/indicators.js"></script>
+  <script src="/static/js/pinescript.js"></script>
+  <script src="/static/js/chart.js"></script>
+  <script src="/static/js/rules/crypto.js"></script>
+  <script src="/static/js/rules/ashare.js"></script>
+  <script src="/static/js/trading.js"></script>
+  <script src="/static/js/market.js"></script>
+  <script src="/static/js/tradeaddons.js"></script>
+  <script src="/static/js/replay.js"></script>
+  <script src="/static/js/bridge.js"></script>
+  <script src="/static/js/companion.js"></script>
+  <script src="/static/js/app.js"></script>
 </body>
 
 </html>

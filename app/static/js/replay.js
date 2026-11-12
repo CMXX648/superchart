@@ -2,6 +2,7 @@
 
 const ReplayEngine = {
     baseData: [],
+    baseIntervalMinutes: 5,
     currentTF: 60,
     replayIndex: 0,
     isPlaying: false,
@@ -80,7 +81,7 @@ const ReplayEngine = {
     },
 
     _updateSpeedLabel() {
-        if (this.speed < 1 && this.currentTF > 5) {
+        if (this.speed < 1 && this.currentTF > (this.baseIntervalMinutes || 5)) {
             // Show sub-candle indicator
             this.dom.speedLabel.textContent = this.speed.toFixed(1) + '× (sub)';
         } else {
@@ -90,7 +91,7 @@ const ReplayEngine = {
 
     /** Enter or exit sub-candle mode based on current speed and timeframe. */
     _syncSubMode() {
-        const shouldBeSub = this.speed < 1 && this.currentTF > 5;
+        const shouldBeSub = this.speed < 1 && this.currentTF > (this.baseIntervalMinutes || 5);
 
         if (shouldBeSub && !this._subMode) {
             // Entering sub-mode: convert replayIndex to base index
@@ -103,9 +104,10 @@ const ReplayEngine = {
         }
     },
 
-    loadData(data, tf) {
+    loadData(data, tf, baseMinutes) {
         this.pause();
         this.baseData = data;
+        this.baseIntervalMinutes = baseMinutes || 5;
         this.currentTF = tf || 60;
         this.replayIndex = 0;
         this._baseIdx = 0;

@@ -198,6 +198,7 @@ const TradingEngine = {
 
             const { _maxPnl, _minPnl, _justPlaced, ...clean } = pos;
             this.history.push(clean);
+            if (typeof Companion !== 'undefined') Companion.recordClosedTrade(clean);
         }
 
         this.positions.splice(idx, 1);
@@ -580,6 +581,7 @@ const TradingEngine = {
             addonData: pos.addonData,
         };
         this.history.push(record);
+        if (typeof Companion !== 'undefined') Companion.recordClosedTrade(record);
         if (shares >= pos.shares) {
             this.positions = this.positions.filter((item) => item.id !== pos.id);
         } else {

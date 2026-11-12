@@ -108,7 +108,7 @@
                     TradingEngine.setAssetType('crypto');
                     TradingEngine.reset();
                     rawBaseData = partialData;
-                    startReplay(partialData, parseInt(tfSelect.value));
+                    startReplay(partialData, parseInt(tfSelect.value), { market: 'crypto', symbol: currentSymbol, interval: '5m', adjust: 'none', baseMinutes: 5, saveCandles: true });
                     showStatus(`Playing with ${partialData.length} bars… still fetching more in background`);
                 } else if (isFinal) {
                     // Background fetch finished — silently extend the data
@@ -126,7 +126,7 @@
                 showStatus(`✓ ${rawBaseData.length} bars loaded.`, 'success');
                 TradingEngine.setAssetType('crypto');
                 TradingEngine.reset();
-                startReplay(rawBaseData, parseInt(tfSelect.value));
+                startReplay(rawBaseData, parseInt(tfSelect.value), { market: 'crypto', symbol: currentSymbol, interval: '5m', adjust: 'none', baseMinutes: 5, saveCandles: true });
                 setTimeout(hideStatus, 3000);
             }
 
@@ -204,7 +204,14 @@
             showStatus(`✓ ${rawBaseData.length} candles from CSV.`, 'success');
             TradingEngine.setAssetType(MarketController.id === 'ashare' ? 'ashare' : (activeTab === 'crypto' ? 'crypto' : 'forex'));
             TradingEngine.reset();
-            startReplay(rawBaseData, parseInt(tfSelect.value));
+            startReplay(rawBaseData, parseInt(tfSelect.value), {
+                market: MarketController.id === 'ashare' ? 'ashare' : 'crypto',
+                symbol: currentSymbol || 'CSV',
+                interval: MarketController.id === 'ashare' ? '1d' : '5m',
+                adjust: 'none',
+                baseMinutes: MarketController.id === 'ashare' ? 1440 : 5,
+                saveCandles: true,
+            });
             setTimeout(hideStatus, 3000);
         } catch (err) { showStatus('Error: ' + err.message, 'error'); }
     });
@@ -425,8 +432,26 @@
     btnExportHistory.addEventListener('click', () => TradingEngine.downloadHistoryJSON());
 
     // ─── Start Replay ───
-    function startReplay(data, tf) {
-        ReplayEngine.loadData(data, tf);
+    function startReplay(data, tf, meta) {
+        const baseMinutes = meta && meta.baseMinutes ? meta.baseMinutes : 5;
+        ReplayEngine.loadData(data, tf, baseMinutes);
+        if (meta && typeof Companion !== 'undefined' && Companion.online) {
+            Companion.startSession({
+                market: meta.market,
+                symbol: meta.symbol,
+                adjust: meta.adjust || '',
+                initialCapital: TradingEngine.startingBalance,
+            });
+            if (meta.saveCandles) {
+                Companion.saveCandles({
+                    market: meta.market,
+                    symbol: meta.symbol,
+                    interval: meta.interval,
+                    adjust: meta.adjust || 'none',
+                    candles: data,
+                });
+            }
+        }
         setTimeout(() => ReplayEngine.play(), 300);
     }
 
@@ -516,6 +541,7 @@
         };
         MarketController.notifier = showStatus;
         MarketController.onAfterSwitch = () => {
+            if (typeof Companion !== 'undefined') Companion.completeSession();
             rawBaseData = [];
             ReplayEngine.pause();
             ReplayEngine.baseData = [];
@@ -524,10 +550,40 @@
             btnDownload.classList.add('hidden');
         };
         MarketController.init();
+        if (typeof Companion !== 'undefined') Companion.init();
         const btnFetchAshare = document.getElementById('btn-fetch-ashare');
         if (btnFetchAshare) {
-            btnFetchAshare.addEventListener('click', () => {
-                showStatus('A股行情将在下一阶段由本地服务提供，当前不会拉取数据。', 'error');
+            btnFetchAshare.addEventListener('click', async () => {
+                if (!Companion.online) await Companion.init();
+                if (!Companion.online) {
+                    showStatus('请先运行 python run.py，再用 http://127.0.0.1:8765 打开。', 'error');
+                    return;
+                }
+                const code = (document.getElementById('ashare-code').value || '').trim();
+                const start = document.getElementById('ashare-date').value;
+                const adjust = document.getElementById('ashare-adjust').value || 'qfq';
+                const refresh = document.getElementById('ashare-refresh').checked;
+                if (!/^\d{6}$/.test(code)) { showStatus('请输入 6 位股票代码', 'error'); return; }
+                btnFetchAshare.disabled = true;
+                try {
+                    showStatus('正在读取 ' + code + ' ...');
+                    const data = await Companion.fetchAshare(code, start, adjust, refresh);
+                    if (!data.candles || !data.candles.length) throw new Error('没有可回放的日线');
+                    currentSymbol = code;
+                    TradingEngine.setAssetType('ashare');
+                    TradingEngine.reset();
+                    const tf = document.getElementById('timeframe');
+                    if (tf) tf.value = '1440';
+                    startReplay(data.candles, 1440, {
+                        market: 'ashare', symbol: code, interval: '1d', adjust: adjust,
+                        baseMinutes: 1440, saveCandles: false,
+                    });
+                    const where = data.from_cache ? '数据库' : (data.source || '行情源');
+                    showStatus('已加载 ' + data.candles.length + ' 根日线（' + where + '）', 'success');
+                } catch (err) {
+                    showStatus(err.message || String(err), 'error');
+                }
+                btnFetchAshare.disabled = false;
             });
         }
     }

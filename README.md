@@ -10,7 +10,15 @@ LocalBarReplay is a standalone charting tool that lets you replay historical mar
 
 The app also includes a WebSocket bridge that lets developers connect external Python scripts — ML models, custom scanners, automated strategies — directly to the chart. The bridge is invisible to normal users and only activates when a Python script is running.
 
-There's no build step. Open `index.html` in a browser and you're good to go.
+The fused app is a Flask project. From the repository root:
+
+```bash
+pip install -r requirements.txt
+python run.py
+```
+
+Then open http://127.0.0.1:8765. Do not open the template file directly; static assets are served from `/static`.
+
 
 ---
 

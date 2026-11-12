@@ -1,12 +1,12 @@
 # 双市场复盘融合设计开发文档
 
-- 状态：设计稿。确认前不改代码。
+- 状态：方案仍有效。工程已按 Flask 应用重组，目录以第 4 节为准。
 - 日期：2026-11-12
-- 宿主：`LocalBarReplay` 的前端交互
+- 宿主：浏览器回放界面，由 Flask 托管
 - 迁入：`KLinePlayground` 的用户战绩和 AI 介入
 - 范围：A 股与加密货币共用同一套历史 K 线回放内核，交易规则分开
 
-本文只定义方案和验收，不记录已经完成的实现。当前仓库里的两个项目都还没有按本文改过。
+本文仍是方案和验收依据。目录调整不改变交易规则、复权口径，也不把回放指针搬回 Flask。旧路径 `LocalBarReplay/server/companion_app.py` 不再使用。
 
 ## 1. 结论
 
@@ -78,21 +78,40 @@
 ## 4. 架构
 
 ```
-浏览器（LocalBarReplay）
-  市场开关 MarketProfile
-  ReplayEngine          回放指针、播放、进退、拖动
-  ChartManager          Lightweight Charts v5
-  TradingEngine         只转发，不内嵌市场公式
-  MarketRules           crypto / ashare
-  CompanionClient       A股数据、用户、AI
+浏览器
+  app/templates/index.html
+  app/static/js            回放、图表、市场规则
         |
         | HTTP 127.0.0.1:8765
         v
-伴随服务 LocalBarReplay/server
-  托管前端静态文件
-  复用上级 backend/data_manager.py 与复权计算
-  新统计库 replay_stats.sqlite
-  OpenAI 兼容调用，Key 只留在服务端
+Flask 应用（run.py -> app.create_app）
+  app/routes/web.py        页面与 docs
+  app/routes/api.py        /api
+  app/services/ashare.py   复用 KLinePlayground/backend/data_manager.py
+  app/db.py                data/replay.sqlite
+  AI Key 只留在服务端，尚未接入
+```
+
+当前目录：
+
+```
+run.py
+requirements.txt
+app/
+  __init__.py              create_app
+  config.py
+  db.py
+  routes/web.py
+  routes/api.py
+  services/ashare.py
+  templates/index.html
+  static/css
+  static/js
+  static/addons
+sdk/                       Python bridge，不进 static
+docs/                      设计稿和原说明
+data/replay.sqlite         运行时生成，不提交
+KLinePlayground/           旧项目，只复用行情代码
 ```
 
 数据职责分开：
@@ -243,7 +262,7 @@ CSV 仍可导入。导入后服从当前市场规则。界面要始终显示当�
 
 迁移口径，不挂旧表。
 
-新库路径：`LocalBarReplay/data/replay_stats.sqlite`。
+新库路径：`data/replay.sqlite`。表名是 `users`、`sessions`、`trades`、`candles`，不使用旧文档里的 `replay_stats.sqlite`。
 
 不写入 `users/<name>/training_history.db`。旧库没有市场字段，会话也是按训练中逐笔写入；新模型是浏览器回放，结束时一次提交。自动导入旧库放到阶段 6，第一版不做。
 
@@ -305,23 +324,18 @@ CSV 仍可导入。导入后服从当前市场规则。界面要始终显示当�
 
 ## 11. 前端改动
 
-新增：
+前端文件现在都在 `app/static` 和 `app/templates`：
 
-- `LocalBarReplay/js/market.js`：市场配置和切换
-- `LocalBarReplay/js/rules/crypto.js`
-- `LocalBarReplay/js/rules/ashare.js`
-- `LocalBarReplay/js/companion.js`：健康检查、拉数、用户、提交本局、AI
-- `LocalBarReplay/js/session.js`：本局报告组装
+- `app/static/js/market.js`：市场配置和切换
+- `app/static/js/rules/crypto.js`
+- `app/static/js/rules/ashare.js`
+- `app/static/js/companion.js`：健康检查、拉数、用户、提交本局
+- `app/templates/index.html`：市场开关和 A 股数据页
+- `app/static/css/styles.css`
+- `app/static/js/trading.js`、`replay.js`、`app.js`
 
-修改：
-
-- `index.html`：市场开关、A 股数据页、按市场显隐的下单字段、结束本局、用户、AI 点评
-- `css/styles.css`：只加开关和 A 股字段，不重做暗色主题
-- `js/trading.js`：委托规则对象
-- `js/replay.js`：记录基准周期，A 股关闭子 K 线模式
-- `js/aggregation.js`：基准周期参数化
-- `js/app.js`：把获取数据、切换市场、结束本局接上
-- `js/bridge.js`：下单改走规则对象。可以放到实时 AI 阶段，但阶段 5 开始前必须完成
+`js/session.js` 没有单独建文件。本局提交放在 `companion.js`。
+`js/bridge.js` 仍在 `app/static/js/bridge.js`。下单改走规则对象仍放到实时 AI 阶段。
 
 明确不改：
 
@@ -331,16 +345,17 @@ CSV 仍可导入。导入后服从当前市场规则。界面要始终显示当�
 
 ## 12. 伴随服务
 
-文件：`LocalBarReplay/server/companion_app.py`
+入口：`run.py`，调用 `app.create_app()`。
 
 监听：`127.0.0.1:8765`
 
 职责：
 
-- 托管 LocalBarReplay 静态文件。这是融合后的推荐打开方式。
-- 提供 A 股日线。
-- 保存用户和战绩。
-- 保存 AI 配置并生成局后点评。
+- `app/routes/web.py` 渲染 `app/templates/index.html`，静态文件走 `/static`。
+- `app/routes/api.py` 提供行情、用户、会话和成交接口。
+- `app/services/ashare.py` 复用 `KLinePlayground/backend/data_manager.py`。
+- `app/db.py` 把 K 线和交易记录写入 `data/replay.sqlite`。
+- AI 配置和局后点评仍是后续接口，不在当前工厂里假装已经完成。
 
 第一版路由：
 
@@ -356,7 +371,7 @@ CSV 仍可导入。导入后服从当前市场规则。界面要始终显示当�
 | GET、POST | `/api/ai/config` | 读取掩码、保存配置 |
 | POST | `/api/ai/review` | 局后点评 |
 
-启动说明在实施阶段写进 LocalBarReplay 的 README。本文不假装该命令已经存在。
+启动命令是仓库根目录的 `python run.py`，说明写在根目录 `README.md`。
 
 ## 13. 实施顺序
 

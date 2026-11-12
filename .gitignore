@@ -2,6 +2,6 @@ KLinePlayground
 data/
 __pycache__/
 *.pyc
-.agents\skills\hallmark
-.claude\skills\hallmark
-.codebuddy\skills\hallmark
+.agents
+.claude
+.codebuddy

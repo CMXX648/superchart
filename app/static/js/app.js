@@ -616,6 +616,7 @@
         const btnRecords = document.getElementById('btn-refresh-records');
         if (btnRecords) btnRecords.addEventListener('click', refreshRecords);
         document.addEventListener('lbr-trade-saved', () => setTimeout(refreshRecords, 400));
+        document.addEventListener('lbr-session-ended', () => setTimeout(refreshRecords, 200));
         const btnFetchAshare = document.getElementById('btn-fetch-ashare');
         if (btnFetchAshare) {
             btnFetchAshare.addEventListener('click', async () => {

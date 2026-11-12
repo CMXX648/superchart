@@ -4,6 +4,7 @@ const Companion = {
     online: false,
     sessionId: null,
     username: 'local',
+    meta: null,
 
     async init() {
         this.username = localStorage.getItem('lbr_username') || 'local';
@@ -48,6 +49,12 @@ const Companion = {
         this.sessionId = (window.crypto && crypto.randomUUID)
             ? crypto.randomUUID().replace(/-/g, '')
             : String(Date.now());
+        this.meta = {
+            market: info.market,
+            symbol: info.symbol,
+            adjust: info.adjust || '',
+            initialCapital: info.initialCapital,
+        };
         await fetch('/api/sessions', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -63,11 +70,11 @@ const Companion = {
     },
 
     async completeSession() {
-        if (!this.online || !this.sessionId || typeof TradingEngine === 'undefined') return;
+        if (!this.online || !this.sessionId || typeof TradingEngine === 'undefined') return false;
         const finalCapital = TradingEngine.balance;
         const initial = TradingEngine.startingBalance || finalCapital;
         const totalReturn = initial ? ((finalCapital - initial) / initial) * 100 : 0;
-        await fetch('/api/sessions/' + this.sessionId + '/complete', {
+        const response = await fetch('/api/sessions/' + this.sessionId + '/complete', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -76,7 +83,55 @@ const Companion = {
                 trade_count: TradingEngine.history.length,
             }),
         });
+        if (!response.ok) return false;
         this.sessionId = null;
+        return true;
+    },
+
+    snapshotReport() {
+        const engine = (typeof TradingEngine !== 'undefined') ? TradingEngine : null;
+        const history = engine && engine.history ? engine.history : [];
+        const finalCapital = engine ? engine.balance : null;
+        const initial = engine ? (engine.startingBalance || finalCapital) : null;
+        const totalReturn = initial ? ((finalCapital - initial) / initial) * 100 : 0;
+        const market = (this.meta && this.meta.market)
+            || ((typeof MarketController !== 'undefined' && MarketController.id === 'ashare') ? 'ashare' : 'crypto');
+        return {
+            session_id: this.sessionId,
+            market: market,
+            symbol: (this.meta && this.meta.symbol) || '',
+            lang: (typeof I18n !== 'undefined' && I18n.lang) || 'zh',
+            initial_capital: initial,
+            final_capital: finalCapital,
+            total_return: totalReturn,
+            trades: history.slice(-40).map(function (item) {
+                return {
+                    symbol: item.symbol || '',
+                    side: item.side,
+                    lots: item.lots,
+                    leverage: item.leverage,
+                    entry_price: item.entryPrice,
+                    exit_price: item.exitPrice,
+                    pnl: item.pnl,
+                    fee: item.fee || 0,
+                    open_date: item.openDate || '',
+                    tp: item.tp,
+                    sl: item.sl,
+                };
+            }),
+        };
+    },
+
+    async endSession() {
+        if (!this.online) return { error: 'offline' };
+        if (!this.sessionId) return { error: 'no-session' };
+        if (typeof TradingEngine !== 'undefined' && TradingEngine.positions && TradingEngine.positions.length) {
+            return { error: 'open' };
+        }
+        const report = this.snapshotReport();
+        const ok = await this.completeSession();
+        if (!ok) return { error: 'complete' };
+        return { report: report };
     },
 
     recordClosedTrade(record) {

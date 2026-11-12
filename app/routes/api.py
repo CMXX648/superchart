@@ -125,3 +125,29 @@ def ashare_klines():
         "symbol": code, "name": name, "adjust": adjust, "source": chosen,
         "base_interval": "1d", "candles": candles, "from_cache": False,
     })
+
+
+@bp.get("/ai/config")
+def get_ai_config():
+    from app.services import ai_review
+    return jsonify(ai_review.public_config())
+
+
+@bp.post("/ai/config")
+def post_ai_config():
+    from app.services import ai_review
+    try:
+        saved = ai_review.save_config(request.get_json(silent=True) or {})
+    except ai_review.ReviewError as exc:
+        return jsonify({"error": exc.message, "code": exc.code}), exc.status
+    return jsonify(saved)
+
+
+@bp.post("/ai/review")
+def post_ai_review():
+    from app.services import ai_review
+    try:
+        result = ai_review.review_report(request.get_json(silent=True) or {})
+    except ai_review.ReviewError as exc:
+        return jsonify({"error": exc.message, "code": exc.code}), exc.status
+    return jsonify(result)

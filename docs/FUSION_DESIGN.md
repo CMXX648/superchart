@@ -8,6 +8,16 @@
 
 本文仍是方案和验收依据。目录调整不改变交易规则、复权口径，也不把回放指针搬回 Flask。旧路径 `LocalBarReplay/server/companion_app.py` 不再使用。
 
+## 当前进度（2026-11-12）
+
+用户已确认：用 `python run.py` 打开 `http://127.0.0.1:8765` 后，可以交易，平仓后侧栏战绩会出现。
+
+已落地：市场开关与规则分叉；Flask 应用工厂和 `/static`；SQLite `data/replay.sqlite`（`candles`、`users`、`sessions`、`trades`）；A 股日线读取与缓存；战绩按全部/A股/加密过滤；右上角语言切换，选择存在浏览器 `localStorage` 的 `lbr_lang`。
+
+下一步：bridge 下单必须走当前市场规则。局后 AI 已接入：Key 在服务端 `data/ai_config.json`，结束本局后请求 `POST /api/ai/review`。没有 Key 时返回错误，不生成假点评。佣金、T+1、印花税已有代码，还没有单独的验收记录。
+
+日常进度以 `AGENTS.md` 为准。本节只在阶段切换时更新。
+
 ## 1. 结论
 
 可以同时兼容两个市场。兼容的方式不是把两套成交公式合成一个，而是共用回放和绘图，用市场配置切换规则、数据和账户。
@@ -89,7 +99,7 @@ Flask 应用（run.py -> app.create_app）
   app/routes/api.py        /api
   app/services/ashare.py   复用 KLinePlayground/backend/data_manager.py
   app/db.py                data/replay.sqlite
-  AI Key 只留在服务端，尚未接入
+  AI Key 只留在服务端 data/ai_config.json
 ```
 
 当前目录：
@@ -355,7 +365,7 @@ CSV 仍可导入。导入后服从当前市场规则。界面要始终显示当�
 - `app/routes/api.py` 提供行情、用户、会话和成交接口。
 - `app/services/ashare.py` 复用 `KLinePlayground/backend/data_manager.py`。
 - `app/db.py` 把 K 线和交易记录写入 `data/replay.sqlite`。
-- AI 配置和局后点评仍是后续接口，不在当前工厂里假装已经完成。
+- pp/services/ai_review.py 读写服务端 AI 配置，并调用 OpenAI 兼容的 /chat/completions。
 
 第一版路由：
 

@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>A股K线复盘训练器</title>
+    <link rel="icon" href="data:;base64,iVBORw0KGgo=">
+    <link rel="stylesheet" href="css/style_enhanced.css">
+    <script src="js/lightweight-charts.standalone.production.js"></script>
+    <style>
+        .checkbox-inline-row {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            white-space: nowrap;
+            cursor: pointer;
+            margin: 0;
+        }
+
+        .checkbox-inline-row input[type="checkbox"] {
+            margin: 0;
+            width: 16px;
+            height: 16px;
+            flex: 0 0 auto;
+            display: inline-block;
+            vertical-align: middle;
+        }
+
+        .checkbox-inline-row span {
+            display: inline-block;
+            line-height: 1.2;
+        }
+
+        .settings-menu .setting-group {
+            display: flex;
+            align-items: center;
+        }
+    </style>
+</head>
+<body data-theme="light">
+    <div id="user-selection" class="screen">
+        <div class="user-selection-container">
+            <div class="hero-copy">
+                <span class="eyebrow">KLine Trainer</span>
+                <h1>A股 K 线复盘训练</h1>
+                <p>训练K线交易能力，支持日线、周线和AI复盘。</p>
+            </div>
+            <div class="version-badge">v3.2.0</div>
+            <div class="user-list">
+                <h2>选择用户</h2>
+                <div id="existing-users"></div>
+                <div class="new-user-section">
+                    <input type="text" id="new-username" placeholder="输入新用户名">
+                    <button id="create-user-btn" class="btn btn-primary create-user-btn">
+                        <span class="create-user-label">创建新用户</span>
+                        <span class="create-user-hint">生成独立训练记录与界面设置</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="main-app" class="screen hidden">
+        <div class="toolbar">
+            <div class="toolbar-left">
+                <span class="current-user">当前用户: <span id="current-username"></span></span>
+                <div id="user-stats" class="user-stats"></div>
+                <button id="switch-user-btn" class="btn btn-secondary">切换用户</button>
+            </div>
+            <div class="toolbar-center">
+                <h1 id="main-title">A股 K 线复盘训练器</h1>
+                <div id="current-bar-id" class="bar-id-display"></div>
+            </div>
+            <div class="toolbar-right">
+                <button id="theme-toggle-btn" class="btn btn-secondary">深色主题</button>
+                <button id="data-sync-btn" class="btn btn-secondary">数据更新器</button>
+                <button id="settings-btn" class="btn btn-secondary">设置</button>
+                <button id="new-training-btn" class="btn btn-primary">新建训练</button>
+            </div>
+        </div>
+
+        <div id="settings-modal" class="modal hidden">
+            <div class="modal-content">
+                <h2>交易与界面设置</h2>
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>默认初始资金 (元)</label>
+                        <input type="number" id="default-initial-capital" step="10000" min="1000">
+                    </div>
+                    <div class="form-group">
+                        <label>佣金费率 (万分之)</label>
+                        <input type="number" id="commission-rate" step="0.1" min="0" max="100">
+                    </div>
+                    <div class="form-group">
+                        <label>最低佣金 (元)</label>
+                        <input type="number" id="min-commission" step="0.1" min="0">
+                    </div>
+                    <div class="form-group">
+                        <label>印花税率 (千分之)</label>
+                        <input type="number" id="stamp-tax-rate" step="0.1" min="0" max="100">
+                    </div>
+                    <div class="form-group hidden">
+                        <label>复权方式</label>
+                        <select id="adjustment-mode">
+                            <option value="none">不复权</option>
+                            <option value="forward" selected>前复权</option>
+                            <option value="backward">后复权</option>
+                            <option value="dynamic_forward">动态前复权</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>界面主题</label>
+                        <select id="theme-select">
+                            <option value="light">浅色</option>
+                            <option value="dark">深色</option>
+                        </select>
+                    </div>
+                    <div class="form-group hidden">
+                        <label>默认 K 线周期</label>
+                        <select id="default-period">
+                            <option value="daily">日K</option>
+                            <option value="weekly">周K</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-group checkbox-group inline-check">
+                    <input type="checkbox" id="enable-ai-api">
+                    <label for="enable-ai-api">开启 AI 介入（暴露本地 API 给 AI 测试器读取）</label>
+                </div>
+
+                <div class="form-group">
+                    <label>均线周期（最多 6 个）</label>
+                    <div id="ma-periods-editor" class="ma-periods-editor"></div>
+                </div>
+
+                <div class="settings-section">
+                    <label class="section-title">技术指标参数</label>
+                    <div class="form-grid compact-grid">
+                        <div class="form-group">
+                            <label>MACD (快 / 慢 / 信号)</label>
+                            <div class="inline-inputs">
+                                <input type="number" id="macd-fast" value="12" min="1" max="100">
+                                <input type="number" id="macd-slow" value="26" min="1" max="200">
+                                <input type="number" id="macd-signal" value="9" min="1" max="100">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>KDJ (N / M1 / M2)</label>
+                            <div class="inline-inputs">
+                                <input type="number" id="kdj-n" value="9" min="1" max="100">
+                                <input type="number" id="kdj-m1" value="3" min="1" max="50">
+                                <input type="number" id="kdj-m2" value="3" min="1" max="50">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>RSI 周期（逗号分隔）</label>
+                            <input type="text" id="rsi-periods" value="6,12,24" placeholder="例如: 6,12,24">
+                        </div>
+                        <div class="form-group">
+                            <label>BOLL (周期 / 标准差)</label>
+                            <div class="inline-inputs">
+                                <input type="number" id="boll-period" value="20" min="1" max="200">
+                                <input type="number" id="boll-std-dev" value="2" min="0.1" step="0.1" max="10">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="modal-actions">
+                    <button id="save-settings-btn" class="btn btn-primary">保存</button>
+                    <button id="cancel-settings-btn" class="btn btn-secondary">取消</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="training-setup" class="modal hidden">
+            <div class="modal-content">
+                <h2>新建训练</h2>
+                <div class="setup-tabs">
+                    <button class="tab-btn active" data-tab="specified">指定模式</button>
+                    <button class="tab-btn" data-tab="random">盲盒模式</button>
+                </div>
+
+                <div id="specified-tab" class="tab-content active">
+                    <div class="form-group">
+                        <label>股票代码</label>
+                        <input type="text" id="stock-code" placeholder="例如: 000001">
+                    </div>
+                    <div class="form-group">
+                        <label>起始日期</label>
+                        <input type="date" id="start-date">
+                    </div>
+                </div>
+
+                <div id="random-tab" class="tab-content">
+                    <div class="form-group">
+                        <label>板块筛选</label>
+                        <select id="sector-filter">
+                            <option value="all">全部</option>
+                            <option value="main">主板</option>
+                            <option value="gem">创业板</option>
+                            <option value="sme">中小板</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>日期范围</label>
+                        <div class="inline-range">
+                            <input type="text" id="random-start-date" value="2024-01-01" placeholder="YYYY-MM-DD">
+                            <span>至</span>
+                            <input type="text" id="random-end-date" value="2026-01-01" placeholder="YYYY-MM-DD">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>数据源</label>
+                        <select id="data-source">
+                            <option value="akshare" selected>AKShare（免费公网）</option>
+                            <option value="xtdata">xtdata / XTQuant（本地）</option>
+                            <option value="mootdx">mootdx（通达信协议）</option>
+                            <option value="offline">本地离线数据</option>
+                        </select>
+                    </div>
+                    <div class="form-group hidden">
+                        <label>K线周期</label>
+                        <select id="kline-period">
+                            <option value="daily" selected>日K</option>
+                            <option value="weekly">周K</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>初始资金</label>
+                        <input type="number" id="initial-capital" value="100000" min="10000" step="1000">
+                    </div>
+                </div>
+
+                <div class="modal-actions">
+                    <button id="start-training-btn" class="btn btn-primary">开始训练</button>
+                    <button id="cancel-setup-btn" class="btn btn-secondary">取消</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="data-sync-modal" class="modal hidden">
+            <div class="modal-content">
+                <h2>增量补充离线数据</h2>
+                <p class="helper-text">用 AKShare、xtdata 或 mootdx 按日期区间补齐本地离线目录。系统会先检查本地已有时间范围，只增量补缺口。</p>
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>补数范围</label>
+                        <select id="sync-scope">
+                            <option value="single" selected>单只股票</option>
+                            <option value="sh">全沪市</option>
+                            <option value="sz">全深市</option>
+                            <option value="all">全市场</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>股票代码</label>
+                        <input type="text" id="sync-stock-code" placeholder="例如: 000001">
+                    </div>
+                    <div class="form-group">
+                        <label>在线数据源</label>
+                        <select id="sync-source">
+                            <option value="akshare" selected>AKShare</option>
+                            <option value="xtdata" hidden>xtdata / XTQuant</option>
+                            <option value="mootdx" hidden>mootdx</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>开始日期</label>
+                        <input type="date" id="sync-start-date">
+                    </div>
+                    <div class="form-group">
+                        <label>结束日期</label>
+                        <input type="date" id="sync-end-date">
+                    </div>
+                </div>
+                <div class="form-group checkbox-group inline-check">
+                    <input type="checkbox" id="sync-force-full">
+                    <label for="sync-force-full">重新全量覆盖，不走增量逻辑</label>
+                </div>
+                <div id="sync-progress-wrap" class="sync-progress hidden">
+                    <div class="sync-progress-bar">
+                        <div id="sync-progress-fill" class="sync-progress-fill"></div>
+                    </div>
+                    <div id="sync-progress-text" class="sync-progress-text">准备中...</div>
+                </div>
+                <div id="sync-result" class="sync-result hidden"></div>
+                <div class="modal-actions">
+                    <button id="confirm-sync-btn" class="btn btn-primary">开始补数</button>
+                    <button id="cancel-sync-btn" class="btn btn-secondary">取消</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="training-interface" class="hidden">
+            <div class="left-panel">
+                <div class="control-section">
+                    <h3>账户信息</h3>
+                    <div class="account-info">
+                        <div class="info-item"><span>总资产</span><span id="total-assets">¥100,000</span></div>
+                        <div class="info-item"><span>可用资金</span><span id="available-cash">¥100,000</span></div>
+                        <div class="info-item"><span>持仓市值</span><span id="position-value">¥0</span></div>
+                        <div class="info-item"><span>浮动盈亏</span><span id="floating-pnl">¥0</span></div>
+                    </div>
+                </div>
+
+                <div class="control-section">
+                    <h3>训练控制</h3>
+                    <div class="training-controls">
+                        <div id="training-progress" class="progress-info">进度: 0%</div>
+                        <button id="end-training-btn" class="btn btn-warning">结束训练</button>
+                        <button id="reset-training-btn" class="btn btn-secondary">重置训练</button>
+                    </div>
+                </div>
+
+                <div class="info-section">
+                    <h3>交易记录</h3>
+                    <div id="trade-history" class="trade-list">
+                        <div class="no-trades">暂无交易记录</div>
+                    </div>
+                </div>
+
+                <div class="control-section">
+                    <h3>图表设置</h3>
+                    <div class="settings-menu">
+                        <div class="setting-group hidden">
+                            <label>复权设置</label>
+                            <div class="adjustment-controls">
+                                <label><input type="radio" name="adjustment" value="none">不复权</label>
+                                <label><input type="radio" name="adjustment" value="forward" checked>前复权</label>
+                                <label><input type="radio" name="adjustment" value="backward">后复权</label>
+                                <label><input type="radio" name="adjustment" value="dynamic_forward">动态前复权</label>
+                            </div>
+                        </div>
+                        <div class="setting-group">
+                            <label class="checkbox-inline-row" for="toggle-chip-distribution">
+                                <input type="checkbox" id="toggle-chip-distribution">
+                                <span>显示筹码分布</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="chart-container" style="position: relative;">
+                <div class="chart-header">
+                    <div class="stock-info">
+                        <span id="stock-name">股票名称</span>
+                        <span id="current-period" class="period-badge">日K</span>
+                        <span id="current-date">当前日期</span>
+                        <span id="current-price">当前价格</span>
+                    </div>
+                    <div class="chart-actions">
+                        <div class="view-period-switch">
+                            <button class="view-period-btn active" data-period="daily">日线</button>
+                            <button class="view-period-btn" data-period="weekly">周线</button>
+                        </div>
+                    </div>
+                </div>
+                <div id="chart" class="chart"></div>
+                <div id="volume-chart" class="volume-chart"></div>
+                <div id="indicator-chart" class="indicator-chart">
+                    <div id="indicator-header" class="indicator-header">
+                        <label>技术指标</label>
+                        <select id="indicator-select">
+                            <option value="MACD">MACD</option>
+                            <option value="KDJ">KDJ</option>
+                            <option value="RSI">RSI</option>
+                            <option value="BOLL">BOLL</option>
+                        </select>
+                    </div>
+                    <div id="indicator-canvas" class="indicator-canvas"></div>
+                </div>
+            </div>
+
+            <div class="right-panel">
+                <div class="control-section">
+                    <div class="playback-controls" style="margin-bottom: 5px;">
+                        <button id="play-pause-btn" class="btn btn-primary">
+                            <span class="play-icon">▶</span>
+                            <span class="pause-icon hidden">⏸</span>
+                        </button>
+                        <button id="next-bar-btn" class="btn btn-secondary">下一根K线</button>
+                    </div>
+                    <div class="speed-control">
+                        <label>自动播放</label>
+                        <select id="playback-speed" style="width: 30%;padding: 0">
+                            <option value="0.5">0.5</option>
+                            <option value="1">1</option>
+                            <option value="2">2</option>
+                            <option value="5">5</option>
+                            <option value="10">10</option>
+                        </select>
+                        <label>s/bar</label>
+                    </div>
+                </div>
+
+                <div class="info-section">
+                    <h3>当日详情</h3>
+                    <div id="daily-info" class="daily-details">
+                        <div class="detail-item"><span>开盘</span><span id="open-price">--</span></div>
+                        <div class="detail-item"><span>最高</span><span id="high-price">--</span></div>
+                        <div class="detail-item"><span>最低</span><span id="low-price">--</span></div>
+                        <div class="detail-item"><span>收盘</span><span id="close-price">--</span></div>
+                        <div class="detail-item"><span>成交量</span><span id="volume">--</span></div>
+                        <div class="detail-item hidden" id="profit-ratio-container"><span>筹码获利比例</span><span id="profit-ratio">--</span></div>
+                        <div class="detail-item"><span>涨跌幅</span><span id="change-percent">--</span></div>
+                    </div>
+                </div>
+
+                <div class="control-section">
+                    <h3>当前持仓</h3>
+                    <div id="current-positions" class="positions-list">
+                        <div class="no-positions">暂无持仓</div>
+                    </div>
+                </div>
+
+                <div class="control-section">
+                    <h3>交易操作</h3>
+                    <div class="trade-controls">
+                        <div class="trade-input">
+                            <label>交易数量（手）</label>
+                            <input type="number" id="trade-quantity" value="1" min="1" max="1">
+                            <div class="max-quantity-info">
+                                最大可买 <span id="max-buy-quantity">0</span> 手
+                                最大可卖 <span id="max-sell-quantity">0</span> 手
+                                <span id="max-quantity" class="hidden">0</span>
+                            </div>
+                        </div>
+                        <div class="trade-buttons">
+                            <button id="shift-toggle-btn" class="btn btn-secondary shift-btn" title="点击或按住 Shift 切换为开盘价交易">⇧</button>
+                            <button id="buy-btn" class="btn btn-danger"style="padding: 0;">买(收盘)</button>
+                            <button id="sell-btn" class="btn btn-success" style="padding: 0;">卖(收盘)</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="shortcut-trigger-container">
+                    <div class="shortcut-trigger">
+                        <span>快捷键</span>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <line x1="12" y1="16" x2="12" y2="12"></line>
+                            <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                        </svg>
+                    </div>
+                    <div class="shortcut-tooltip">
+                        <div class="shortcut-item"><strong>空格 / 回车</strong>: 下一根K线</div>
+                        <div class="shortcut-item"><strong>B / + / =</strong>: 买入(收盘价)</div>
+                        <div class="shortcut-item"><strong>Shift + B / + / =</strong>: 买入(开盘价)</div>
+                        <div class="shortcut-item"><strong>S / -</strong>: 卖出(收盘价)</div>
+                        <div class="shortcut-item"><strong>Shift + S / -</strong>: 卖出(开盘价)</div>
+                        <div class="shortcut-item"><strong>数字键</strong>: 设置交易数量</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="report-interface" class="hidden">
+            <div class="report-container">
+                <h2>复盘报告</h2>
+                <div id="report-content"></div>
+                <div class="report-actions">
+                    <button id="view-full-chart-btn" class="btn btn-primary">查看完整走势</button>
+                    <button id="ai-analyze-btn" class="btn btn-info hidden">AI 智能复盘点评</button>
+                    <button id="new-training-from-report-btn" class="btn btn-secondary">开始新训练</button>
+                    <button id="return-main-menu-btn" class="btn btn-secondary">返回主菜单</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="loading-overlay" class="loading-overlay hidden">
+            <div class="loading-card">
+                <div class="loading-spinner"></div>
+                <div id="loading-title" class="loading-title">正在加载</div>
+                <div id="loading-detail" class="loading-detail">请稍候...</div>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/marked.min.js"></script>
+    <script src="js/main_enhanced.js"></script>
+</body>
+</html>

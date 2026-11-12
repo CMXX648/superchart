@@ -1,0 +1,10 @@
+flask
+flask-cors
+pandas
+numpy
+pywebview
+akshare
+mootdx
+requests
+openai
+lightweight-charts

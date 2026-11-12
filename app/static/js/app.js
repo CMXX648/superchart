@@ -519,6 +519,54 @@
         }
     }
 
+    let recordMarket = 'all';
+
+    function renderRecords(sessions, trades) {
+        const summary = document.getElementById('record-summary');
+        const list = document.getElementById('record-sessions');
+        if (!summary || !list) return;
+        const match = (row) => recordMarket === 'all' || row.market === recordMarket;
+        const shownSessions = (sessions || []).filter(match);
+        const shownTrades = (trades || []).filter(match);
+        const returns = shownSessions.map(s => Number(s.total_return)).filter(n => Number.isFinite(n));
+        const wins = shownTrades.filter(tr => Number(tr.pnl) > 0).length;
+        const avg = returns.length ? returns.reduce((a, b) => a + b, 0) / returns.length : null;
+        const best = returns.length ? Math.max(...returns) : null;
+        const worst = returns.length ? Math.min(...returns) : null;
+        const pct = (n) => n === null ? '—' : (n >= 0 ? '+' : '') + n.toFixed(2) + '%';
+        const winRate = shownTrades.length ? Math.round(wins / shownTrades.length * 100) + '%' : '—';
+        summary.textContent = '局数 ' + shownSessions.length
+            + ' · 均收益 ' + pct(avg)
+            + ' · 最佳 ' + pct(best)
+            + ' · 最差 ' + pct(worst)
+            + ' · 交易胜率 ' + winRate;
+        if (!shownSessions.length) {
+            list.innerHTML = '<div class="empty-state">暂无已保存回合</div>';
+            return;
+        }
+        list.innerHTML = shownSessions.slice(0, 12).map(s => {
+            const ret = Number(s.total_return);
+            const label = Number.isFinite(ret) ? ((ret >= 0 ? '+' : '') + ret.toFixed(2) + '%') : '—';
+            return '<div class="record-row">' + (s.market === 'ashare' ? 'A股' : '加密')
+                + ' ' + (s.symbol || '—') + ' ' + label
+                + ' · ' + (s.trade_count || 0) + '笔</div>';
+        }).join('');
+    }
+
+    async function refreshRecords() {
+        const summary = document.getElementById('record-summary');
+        if (!Companion.online) {
+            if (summary) summary.textContent = '未连接数据库';
+            return;
+        }
+        try {
+            const [sessions, trades] = await Promise.all([Companion.listSessions(), Companion.listTrades()]);
+            renderRecords(sessions, trades);
+        } catch (err) {
+            if (summary) summary.textContent = '战绩读取失败';
+        }
+    }
+
     // ─── Boot ───
     function boot() {
         setDefaultDates();
@@ -541,7 +589,7 @@
         };
         MarketController.notifier = showStatus;
         MarketController.onAfterSwitch = () => {
-            if (typeof Companion !== 'undefined') Companion.completeSession();
+            if (typeof Companion !== 'undefined') Companion.completeSession().then(refreshRecords);
             rawBaseData = [];
             ReplayEngine.pause();
             ReplayEngine.baseData = [];
@@ -550,7 +598,20 @@
             btnDownload.classList.add('hidden');
         };
         MarketController.init();
-        if (typeof Companion !== 'undefined') Companion.init();
+        if (typeof Companion !== 'undefined') {
+            Companion.init().then(refreshRecords);
+        }
+        document.querySelectorAll('.record-filter').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.record-filter').forEach(el => el.classList.remove('active'));
+                btn.classList.add('active');
+                recordMarket = btn.dataset.market;
+                refreshRecords();
+            });
+        });
+        const btnRecords = document.getElementById('btn-refresh-records');
+        if (btnRecords) btnRecords.addEventListener('click', refreshRecords);
+        document.addEventListener('lbr-trade-saved', () => setTimeout(refreshRecords, 400));
         const btnFetchAshare = document.getElementById('btn-fetch-ashare');
         if (btnFetchAshare) {
             btnFetchAshare.addEventListener('click', async () => {

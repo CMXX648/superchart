@@ -199,6 +199,7 @@ const TradingEngine = {
             const { _maxPnl, _minPnl, _justPlaced, ...clean } = pos;
             this.history.push(clean);
             if (typeof Companion !== 'undefined') Companion.recordClosedTrade(clean);
+            document.dispatchEvent(new CustomEvent('lbr-trade-saved'));
         }
 
         this.positions.splice(idx, 1);
@@ -582,6 +583,7 @@ const TradingEngine = {
         };
         this.history.push(record);
         if (typeof Companion !== 'undefined') Companion.recordClosedTrade(record);
+        document.dispatchEvent(new CustomEvent('lbr-trade-saved'));
         if (shares >= pos.shares) {
             this.positions = this.positions.filter((item) => item.id !== pos.id);
         } else {

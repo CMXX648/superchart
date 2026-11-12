@@ -115,6 +115,20 @@ const Companion = {
         }).catch(function () {});
     },
 
+    async listSessions() {
+        if (!this.online) return [];
+        const response = await fetch('/api/users/' + encodeURIComponent(this.username) + '/sessions');
+        if (!response.ok) return [];
+        return response.json();
+    },
+
+    async listTrades() {
+        if (!this.online) return [];
+        const response = await fetch('/api/users/' + encodeURIComponent(this.username) + '/trades');
+        if (!response.ok) return [];
+        return response.json();
+    },
+
     async fetchAshare(code, start, adjust, refresh) {
         const params = new URLSearchParams({
             code: code,

@@ -1697,3 +1697,12 @@ body.market-crypto #tab-ashare {
 .server-status.online {
   color: var(--green);
 }
+
+.record-filters { display: flex; gap: 4px; margin-bottom: 6px; }
+.record-filter {
+  border: none; background: var(--bg-input); color: var(--text-dim);
+  border-radius: 4px; padding: 2px 8px; font-size: 11px; cursor: pointer;
+}
+.record-filter.active { background: var(--accent); color: #fff; }
+.record-summary { font-size: 11px; color: var(--text-dim); line-height: 1.45; margin-bottom: 6px; }
+.record-row { font-size: 11px; padding: 4px 0; border-bottom: 1px solid var(--border); }

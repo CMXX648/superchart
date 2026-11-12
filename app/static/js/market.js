@@ -19,8 +19,8 @@ const MarketController = {
         });
     },
 
-    notify(message, type) {
-        if (this.notifier) this.notifier(message, type);
+    notify(message, type, duration) {
+        if (this.notifier) this.notifier(message, type, duration);
     },
 
     requestSwitch(nextId) {
@@ -34,7 +34,7 @@ const MarketController = {
         if (typeof TradingEngine !== 'undefined' && TradingEngine.positions.length) {
             const reason = TradingEngine.closeForSwitch();
             if (reason) {
-                this.notify(reason, 'error');
+                this.notify(reason, 'error', 3500);
                 window.alert(reason);
                 return;
             }
@@ -44,7 +44,7 @@ const MarketController = {
         TradingEngine.activateMarket(nextId);
         this.applyChrome({ selectTab: true });
         if (this.onAfterSwitch) this.onAfterSwitch();
-        this.notify(I18n.t(nextId === 'ashare' ? 'switch.ashare' : 'switch.crypto'), 'success');
+        this.notify(I18n.t(nextId === 'ashare' ? 'switch.ashare' : 'switch.crypto'), 'success', 2500);
     },
 
     _isDirty() {

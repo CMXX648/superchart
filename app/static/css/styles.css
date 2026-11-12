@@ -586,23 +586,34 @@ body.prop-firm-active .acct-row {
 
 /* ═══ STATUS BAR ═══ */
 #status-bar {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  z-index: 10000;
+  width: max-content;
+  max-width: min(36rem, calc(100vw - 32px));
+  transform: translate(-50%, -50%);
   padding: var(--space-xs) var(--space-md);
-  background: var(--color-paper-3);
-  border-bottom: 1px solid var(--border);
+  border: 1px solid var(--color-rule-2);
+  border-radius: var(--radius-card);
+  background: var(--color-paper-2);
+  box-shadow: 0 12px 36px rgb(0 0 0 / 35%);
   font-size: 12px;
-  color: var(--text-dim);
-  flex-shrink: 0;
+  color: var(--color-ink-2);
   display: flex;
   align-items: center;
   gap: var(--space-xs);
+  pointer-events: none;
 }
 
 #status-bar.error {
-  color: var(--red);
+  border-color: var(--color-bad);
+  color: var(--color-bad);
 }
 
 #status-bar.success {
-  color: var(--green);
+  border-color: var(--color-ok);
+  color: var(--color-ok);
 }
 
 #status-bar .spinner {
@@ -1845,8 +1856,8 @@ select:disabled {
 
 /* Top instrument bar */
 #asset-panel {
-  min-height: 44px;
-  padding: var(--space-2xs) var(--space-sm);
+  min-height: 38px;
+  padding: 2px var(--space-sm);
   gap: var(--space-xs);
   background: var(--color-paper-2);
   color: var(--text);
@@ -1875,7 +1886,7 @@ select:disabled {
 .market-btn,
 .tab,
 .lang-btn {
-  min-height: 26px;
+  min-height: 24px;
   padding: 0 var(--space-sm);
   border: 1px solid transparent;
   border-radius: 4px;
@@ -1930,7 +1941,7 @@ input[type="date"],
 input[type="number"],
 input[type="password"],
 textarea {
-  min-height: 30px;
+  min-height: 27px;
   padding: 0 var(--space-xs);
   border: 1px solid var(--color-field);
   border-radius: var(--radius-pill);
@@ -1983,15 +1994,15 @@ textarea::placeholder {
 
 #asset-panel .btn-primary,
 #asset-panel .btn-secondary {
-  min-height: 30px;
+  min-height: 27px;
   padding-inline: var(--space-sm);
   white-space: nowrap;
 }
 
 #asset-panel select,
 #asset-panel input {
-  min-height: 30px;
-  height: 30px;
+  min-height: 27px;
+  height: 27px;
 }
 
 .ai-config-btn {
@@ -2055,8 +2066,8 @@ textarea::placeholder {
   display: none;
   align-items: center;
   gap: var(--space-xs);
-  min-height: 40px;
-  padding: var(--space-3xs) var(--space-xs);
+  min-height: 36px;
+  padding: 2px var(--space-xs);
   border-bottom: 1px solid var(--color-rule);
   background: var(--color-paper-2);
   color: var(--text);
@@ -2082,7 +2093,7 @@ textarea::placeholder {
 
 .panel-tab {
   min-width: 0;
-  min-height: 28px;
+  min-height: 24px;
   flex: 1;
   padding: 0 var(--space-sm);
   border: 1px solid transparent;
@@ -2228,8 +2239,8 @@ textarea::placeholder {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  height: 28px;
+  width: 22px;
+  height: 22px;
   flex: 0 0 auto;
   padding: 0;
   border: 1px solid var(--color-rule-2);
@@ -2527,8 +2538,8 @@ textarea::placeholder {
   grid-template-rows: auto;
   align-items: center;
   gap: var(--space-md);
-  min-height: 54px;
-  padding: var(--space-3xs) var(--space-md);
+  min-height: 46px;
+  padding: 2px var(--space-md);
   background: var(--color-paper-2);
   border-top: 1px solid var(--color-rule);
   z-index: var(--z-sticky);
@@ -2559,9 +2570,9 @@ textarea::placeholder {
 }
 
 .ctrl-btn {
-  width: 34px;
-  min-width: 34px;
-  height: 32px;
+  width: 30px;
+  min-width: 30px;
+  height: 28px;
   padding: 0;
   border: 1px solid var(--color-rule-2);
   border-radius: var(--radius-pill);
@@ -2579,6 +2590,7 @@ textarea::placeholder {
 .ctrl-toggle {
   width: auto;
   min-width: 0;
+  flex: 0 0 auto;
   padding: 0 var(--space-xs);
   font-size: 11px;
   font-weight: 500;
@@ -2586,9 +2598,9 @@ textarea::placeholder {
 }
 
 .play-btn {
-  width: 44px;
-  min-width: 44px;
-  height: 38px;
+  width: 38px;
+  min-width: 38px;
+  height: 32px;
   border-color: var(--color-accent);
   background: var(--color-accent);
   color: var(--color-accent-ink);
@@ -2632,8 +2644,8 @@ textarea::placeholder {
 
 .speed-control {
   display: grid;
-  grid-template-rows: auto 22px auto;
-  gap: var(--space-3xs);
+  grid-template-rows: auto 18px auto;
+  gap: 0;
   width: clamp(196px, 18vw, 248px);
   min-width: 0;
 }
@@ -2871,6 +2883,55 @@ input[type="range"]::-moz-range-thumb {
   .play-btn {
     min-width: 52px;
     min-height: 48px;
+  }
+
+  #asset-panel .market-btn,
+  #asset-panel .tab,
+  #asset-panel .lang-btn,
+  #asset-panel .btn-primary,
+  #asset-panel .btn-secondary,
+  #asset-panel input,
+  #asset-panel select {
+    min-height: 38px;
+  }
+
+  #asset-panel input,
+  #asset-panel select {
+    height: 38px;
+  }
+
+  .ctrl-btn {
+    width: 38px;
+    min-width: 38px;
+    height: 38px;
+    min-height: 38px;
+  }
+
+  .ctrl-toggle {
+    min-height: 38px;
+  }
+
+  #btn-open-only {
+    width: auto;
+    min-width: max-content;
+    padding-inline: var(--space-xs);
+  }
+
+  .panel-tab {
+    min-width: 0;
+    min-height: 30px;
+  }
+
+  #trading-panel.panel-enhanced .panel-toolbar {
+    min-height: 38px;
+    padding-block: 2px;
+  }
+
+  .play-btn {
+    width: 40px;
+    min-width: 40px;
+    height: 40px;
+    min-height: 40px;
   }
 }
 

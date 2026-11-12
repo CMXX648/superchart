@@ -54,14 +54,21 @@
     let rawBaseData = null, csvParsedData = null;
     let currentSide = 'buy', currentSymbol = 'BTCUSDT', activeTab = 'crypto';
     let editingPineId = null; // null = new, string = editing existing
+    let statusTimeout = null;
 
     // ─── Helpers ───
-    function showStatus(msg, type) {
+    function showStatus(msg, type, duration) {
+        clearTimeout(statusTimeout);
         statusBar.className = type || '';
         statusBar.classList.remove('hidden');
         statusBar.innerHTML = type ? msg : `<span class="spinner"></span> ${msg}`;
+        if (duration > 0) statusTimeout = setTimeout(hideStatus, duration);
     }
-    function hideStatus() { statusBar.classList.add('hidden'); }
+    function hideStatus() {
+        clearTimeout(statusTimeout);
+        statusTimeout = null;
+        statusBar.classList.add('hidden');
+    }
     function setDefaultDates() {
         const saved = localStorage.getItem('lbr_start_date');
         const iso = saved || (() => { const d = new Date(); d.setDate(d.getDate() - 30); return d.toISOString().split('T')[0]; })();

@@ -375,7 +375,7 @@ const TradingEngine = {
       <div class="position-card" data-pos-id="${p.id}">
         <div class="pos-header">
           <span class="pos-side ${p.side}">${p.side} ${p.lots.toFixed(3)}L @${p.leverage}×</span>
-          <button class="pos-close" data-close-id="${p.id}">✕</button>
+          <button type="button" class="pos-close" data-close-id="${p.id}" aria-label="${I18n.t('pos.close')}">×</button>
         </div>
         <div class="pos-details">
           <span>Entry</span><strong>${p.entryPrice.toFixed(prec(p.entryPrice))}</strong>

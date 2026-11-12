@@ -142,7 +142,7 @@ const SessionReview = {
         const line = document.createElement('div');
         const ret = Number(report.total_return);
         const retText = Number.isFinite(ret) ? ((ret >= 0 ? '+' : '') + ret.toFixed(2) + '%') : '-';
-        line.textContent = (report.symbol || '-') + ' · ' + I18n.t('ai.return') + ' ' + retText;
+        line.textContent = (report.symbol || '-') + ', ' + I18n.t('ai.return') + ' ' + retText;
         const tradeLine = document.createElement('div');
         const trade = (report.trades || [])[0];
         tradeLine.textContent = trade

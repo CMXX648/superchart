@@ -4,20 +4,64 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>LocalBarReplay — TradingView Bar Replay Clone</title>
+  <title>LocalBarReplay: TradingView Bar Replay Clone</title>
   <meta name="description"
     content="Local bar replay with Binance data, Forex, trading simulation, and TradingView-style charting.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/static/css/styles.css">
+  <link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible+Mono:wght@400;500&family=Host+Grotesk:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../static/css/styles.css">
 </head>
 
 <body class="market-crypto">
+  <svg class="icon-sprite" aria-hidden="true" focusable="false" width="0" height="0">
+    <symbol id="icon-download" viewBox="0 0 24 24">
+      <path d="M12 3v12m0 0 5-5m-5 5-5-5M5 21h14" />
+    </symbol>
+    <symbol id="icon-chart" viewBox="0 0 24 24">
+      <path d="M4 20V10m5 10V4m6 16v-7m5 7V7" />
+    </symbol>
+    <symbol id="icon-target" viewBox="0 0 24 24">
+      <circle cx="12" cy="12" r="7" />
+      <path d="M12 2v4m0 12v4M2 12h4m12 0h4" />
+    </symbol>
+    <symbol id="icon-skip-back" viewBox="0 0 24 24">
+      <path d="M5 5v14M19 5l-9 7 9 7V5Z" />
+    </symbol>
+    <symbol id="icon-step-back" viewBox="0 0 24 24">
+      <path d="m15 18-6-6 6-6" />
+    </symbol>
+    <symbol id="icon-play" viewBox="0 0 24 24">
+      <path d="M7 4v16l13-8L7 4Z" />
+    </symbol>
+    <symbol id="icon-pause" viewBox="0 0 24 24">
+      <path d="M8 5v14M16 5v14" />
+    </symbol>
+    <symbol id="icon-step-forward" viewBox="0 0 24 24">
+      <path d="m9 18 6-6-6-6" />
+    </symbol>
+    <symbol id="icon-skip-forward" viewBox="0 0 24 24">
+      <path d="M19 5v14M5 5l9 7-9 7V5Z" />
+    </symbol>
+    <symbol id="icon-panel-toggle" viewBox="0 0 24 24">
+      <rect x="3" y="4" width="18" height="16" rx="2" />
+      <path d="M9 4v16m6-12-3 4 3 4" />
+    </symbol>
+    <symbol id="icon-refresh" viewBox="0 0 24 24">
+      <path d="M20 6v5h-5M4 18v-5h5M18.5 9A7 7 0 0 0 6.2 6.2L4 9m16 6-2.2 2.8A7 7 0 0 1 5.5 15" />
+    </symbol>
+    <symbol id="icon-export" viewBox="0 0 24 24">
+      <path d="M14 3h7v7m0-7-9 9M19 14v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h5" />
+    </symbol>
+    <symbol id="icon-plus" viewBox="0 0 24 24">
+      <path d="M12 5v14M5 12h14" />
+    </symbol>
+  </svg>
+
   <!-- ═══ TOP BAR ═══ -->
   <header id="asset-panel">
     <div class="panel-left">
       <div class="logo">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#2962ff" stroke-width="2.5">
+        <svg class="logo-icon" aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
           <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
         </svg>
         <span>LocalBarReplay</span>
@@ -29,10 +73,10 @@
       <input id="lbr-user" class="user-input" type="text" value="local" maxlength="32" data-i18n-title="user.title" title="用户名，交易记录按此写入数据库">
       <span id="server-status" class="server-status" data-i18n="server.offline">未连接 Flask</span>
       <div id="tabs" class="tab-group">
-        <button class="tab active" data-tab="crypto" id="tab-btn-crypto" data-i18n="tab.crypto">Crypto</button>
-        <button class="tab" data-tab="forex" id="tab-btn-forex" data-i18n="tab.forex">Forex</button>
-        <button class="tab" data-tab="ashare" id="tab-btn-ashare" data-i18n="tab.ashare">A股数据</button>
-        <button class="tab" data-tab="csv" id="tab-btn-csv" data-i18n="tab.csv">Load CSV</button>
+        <button type="button" class="tab active" data-tab="crypto" id="tab-btn-crypto" data-i18n="tab.crypto">Crypto</button>
+        <button type="button" class="tab" data-tab="forex" id="tab-btn-forex" data-i18n="tab.forex">Forex</button>
+        <button type="button" class="tab" data-tab="ashare" id="tab-btn-ashare" data-i18n="tab.ashare">A股数据</button>
+        <button type="button" class="tab" data-tab="csv" id="tab-btn-csv" data-i18n="tab.csv">Load CSV</button>
       </div>
     </div>
 
@@ -44,9 +88,12 @@
       </select>
       <input id="crypto-custom" type="text" placeholder="e.g. SOLUSDT" class="hidden" spellcheck="false">
       <input id="crypto-date" type="date" title="Start replay from">
-      <button id="btn-fetch-binance" class="btn-primary" data-i18n="btn.fetchBinance">Fetch from Binance</button>
-      <button id="btn-download-csv" class="btn-secondary hidden" title="Download fetched data as CSV">⬇ CSV</button>
-      <button id="btn-clear-cache" class="btn-secondary" data-i18n="btn.clearCache">Clear Cache</button>
+      <button id="btn-fetch-binance" class="btn-primary" type="button" data-i18n="btn.fetchBinance">Fetch from Binance</button>
+      <button id="btn-download-csv" class="btn-secondary hidden" type="button" title="Download fetched data as CSV">
+        <svg class="icon" aria-hidden="true"><use href="#icon-download"></use></svg>
+        <span data-i18n="btn.downloadCsv">Download CSV</span>
+      </button>
+      <button id="btn-clear-cache" class="btn-secondary" type="button" data-i18n="btn.clearCache">Clear Cache</button>
     </div>
 
     <div id="tab-ashare" class="tab-content">
@@ -58,8 +105,12 @@
         <option value="hfq" data-i18n="opt.hfq">后复权</option>
       </select>
       <button id="btn-fetch-ashare" class="btn-primary" type="button" data-i18n="btn.fetchAshare">获取日线</button>
-      <label class="ashare-note"><input id="ashare-refresh" type="checkbox"> <span data-i18n="note.refresh">强制更新</span></label>
-      <span class="ashare-note" data-i18n="note.ashare">通过 Flask 读取并写入数据库。未启动服务时不能拉 A 股。</span>
+      <label class="ashare-refresh"><input id="ashare-refresh" type="checkbox"> <span data-i18n="note.refresh">强制更新</span></label>
+      <button id="btn-ashare-help" class="info-tip" type="button" aria-expanded="false" aria-controls="ashare-help"
+        aria-label="通过 Flask 读取并写入数据库。未启动服务时不能拉 A 股。" data-i18n-aria-label="note.ashare">
+        <span aria-hidden="true">i</span>
+        <span id="ashare-help" class="info-tip-text" role="tooltip" data-i18n="note.ashare">通过 Flask 读取并写入数据库。未启动服务时不能拉 A 股。</span>
+      </button>
     </div>
 
     <div id="tab-forex" class="tab-content">
@@ -78,7 +129,7 @@
         <option>EURAUD</option>
       </select>
       <input id="forex-date" type="date" title="Start replay from">
-      <button id="btn-fetch-mt5" class="btn-primary" data-i18n="btn.fetchMt5">Fetch from MT5</button>
+      <button id="btn-fetch-mt5" class="btn-primary" type="button" data-i18n="btn.fetchMt5">Fetch from MT5</button>
     </div>
 
     <div id="tab-csv" class="tab-content">
@@ -90,7 +141,10 @@
 
     <!-- Indicator Menu -->
     <div class="ind-menu-wrap">
-      <button id="btn-indicators" class="btn-secondary" data-i18n="btn.indicators">📊 Indicators</button>
+      <button id="btn-indicators" class="btn-secondary" type="button" aria-expanded="false" aria-controls="ind-dropdown">
+        <svg class="icon" aria-hidden="true"><use href="#icon-chart"></use></svg>
+        <span data-i18n="btn.indicators">Indicators</span>
+      </button>
       <div id="ind-dropdown" class="ind-dropdown hidden">
         <div class="ind-group">
           <label class="ind-toggle"><input type="checkbox" data-ind="sma" checked> <b>SMA</b></label>
@@ -138,8 +192,11 @@
         <!-- PineScript custom indicators -->
         <div class="ind-group pine-section">
           <div class="pine-header">
-            <b>📝 Custom (PineScript)</b>
-            <button id="btn-pine-new" class="btn-pine-add" title="Add new PineScript indicator">+ Add</button>
+            <b>Custom (PineScript)</b>
+            <button id="btn-pine-new" class="btn-pine-add" type="button" title="Add new PineScript indicator">
+              <svg class="icon" aria-hidden="true"><use href="#icon-plus"></use></svg>
+              <span data-i18n="pine.add">Add</span>
+            </button>
           </div>
           <div id="pine-list"></div>
         </div>
@@ -147,10 +204,10 @@
         <!-- Trade context addons (developer) -->
         <div class="ind-group addon-section">
           <div class="pine-header">
-            <b>🧩 Trade Addons</b>
+            <b>Trade Addons</b>
           </div>
           <div id="addon-list" class="addon-list">
-            <label class="addon-toggle"><input type="checkbox" data-addon="/static/addons/maven_prop_firm.js"> 🏢 Maven Prop Firm</label>
+            <label class="addon-toggle"><input type="checkbox" data-addon="/static/addons/maven_prop_firm.js"> Maven Prop Firm</label>
             <label class="addon-toggle"><input type="checkbox" data-addon="/static/addons/full_trade_context.js"> Full Trade Context</label>
             <label class="addon-toggle"><input type="checkbox" data-addon="/static/addons/example_ema_context.js"> EMA Strategy Context</label>
           </div>
@@ -159,7 +216,7 @@
         </div>
 
         <div class="ind-footer">
-          <button id="ind-apply" class="btn-primary" style="width:100%" data-i18n="btn.apply">Apply Changes</button>
+          <button id="ind-apply" class="btn-primary" type="button" data-i18n="btn.apply">Apply Changes</button>
         </div>
       </div>
     </div>
@@ -182,146 +239,221 @@
       <div id="watermark">LocalBarReplay</div>
     </main>
 
-    <!-- Trading Panel -->
-    <aside id="trading-panel">
-      <div class="trade-section">
-        <h4 data-i18n="trade.title">Trade</h4>
-        <p id="market-rule-note" class="market-rule-note">当前规则：加密货币 · 可多空 · 杠杆</p>
-        <div class="trade-type-tabs">
-          <button class="tt-tab active" data-side="buy" id="side-buy" data-i18n="trade.buyLong">Buy / Long</button>
-          <button class="tt-tab" data-side="sell" id="side-sell" data-i18n="trade.sellShort">Sell / Short</button>
+    <!-- Trade and review panel -->
+    <aside id="trading-panel" aria-label="交易与复盘">
+      <div class="panel-toolbar">
+        <div id="panel-tabs" class="panel-tabs" role="tablist" aria-label="侧栏页面">
+          <button type="button" class="panel-tab active" id="panel-tab-trade" role="tab" aria-selected="true"
+            aria-controls="panel-page-trade" tabindex="0" data-panel-name="trade">
+            <span data-i18n="panel.trade">交易</span>
+          </button>
+          <button type="button" class="panel-tab" id="panel-tab-review" role="tab" aria-selected="false"
+            aria-controls="panel-page-review" tabindex="-1" data-panel-name="review">
+            <span data-i18n="panel.review">复盘</span>
+          </button>
         </div>
-        <div class="trade-field">
-          <label id="trade-size-label" data-i18n="trade.size">Size</label>
-          <div class="size-row">
-            <input id="trade-lots" type="number" step="0.01" min="0.01" value="0.1" placeholder="Lots">
-            <span class="size-or crypto-size-extra" data-i18n="trade.or">or</span>
-            <input id="trade-usdt" class="crypto-size-extra" type="number" step="1" min="1" placeholder="USDT $"
-              title="USDT amount — lots auto-calculated">
-          </div>
-          <div id="trade-value-preview" class="trade-value-preview"></div>
-        </div>
-        <div class="trade-field leverage-field">
-          <label data-i18n="trade.leverage">Leverage</label>
-          <select id="trade-leverage">
-            <option value="1">1×</option>
-            <option value="2">2×</option>
-            <option value="5">5×</option>
-            <option value="10" selected>10×</option>
-            <option value="20">20×</option>
-            <option value="50">50×</option>
-            <option value="100">100×</option>
-            <option value="125">125×</option>
-          </select>
-        </div>
-        <div class="trade-field">
-          <label data-i18n="trade.tp">Take Profit</label>
-          <div class="pick-row">
-            <input id="trade-tp" type="number" step="any" placeholder="TP price">
-            <button id="btn-pick-tp" class="pick-btn" title="Click on chart to set TP">🎯</button>
-          </div>
-        </div>
-        <div class="trade-field">
-          <label data-i18n="trade.sl">Stop Loss</label>
-          <div class="pick-row">
-            <input id="trade-sl" type="number" step="any" placeholder="SL price">
-            <button id="btn-pick-sl" class="pick-btn" title="Click on chart to set SL">🎯</button>
-          </div>
-        </div>
-        <div class="trade-actions">
-          <button id="btn-place-trade" class="btn-trade-buy" data-i18n="trade.placeBuy">Place Buy</button>
-          <button id="btn-close-all" class="btn-secondary" data-i18n="trade.closeAll">Close All</button>
-        </div>
+        <button id="btn-panel-toggle" class="panel-toggle" type="button" aria-expanded="true"
+          aria-controls="panel-pages" data-i18n-aria-label="panel.collapse" data-i18n-title="panel.collapse"
+          aria-label="收起侧栏" title="收起侧栏">
+          <svg class="icon" aria-hidden="true"><use href="#icon-panel-toggle"></use></svg>
+        </button>
       </div>
 
-      <div class="trade-section">
-        <h4 data-i18n="pos.open">Open Positions</h4>
-        <div id="open-positions" class="positions-list">
-          <div class="empty-state">No open positions</div>
-        </div>
-      </div>
-
-      <div id="account-info" class="trade-section account-section">
-        <h4 data-i18n="acct.title">Account</h4>
-        <div class="account-grid">
-          <div class="acct-item"><span class="acct-label" data-i18n="acct.balance">Balance</span><span id="acct-balance"
-              class="acct-value">$10,000.00</span></div>
-          <div class="acct-item"><span class="acct-label" data-i18n="acct.equity">Equity</span><span id="acct-equity"
-              class="acct-value">$10,000.00</span></div>
-          <div class="acct-item"><span class="acct-label" data-i18n="acct.pnl">P&L</span><span id="acct-pnl" class="acct-value">$0.00</span>
+      <div id="panel-pages" class="panel-pages">
+        <section id="panel-page-trade" class="panel-page active" role="tabpanel" aria-labelledby="panel-tab-trade"
+          data-panel-page="trade">
+          <div class="trade-section">
+            <h4 class="visually-hidden" data-i18n="trade.title">Trade</h4>
+            <p id="market-rule-note" class="market-rule-note">当前规则：加密货币，可多空，支持杠杆</p>
+            <div class="trade-type-tabs">
+              <button type="button" class="tt-tab active" data-side="buy" id="side-buy" data-i18n="trade.buyLong">Buy / Long</button>
+              <button type="button" class="tt-tab" data-side="sell" id="side-sell" data-i18n="trade.sellShort">Sell / Short</button>
+            </div>
+            <div class="trade-field">
+              <label id="trade-size-label" data-i18n="trade.size">Size</label>
+              <div class="size-row">
+                <input id="trade-lots" type="number" step="0.01" min="0.01" value="0.1" placeholder="Lots">
+                <span class="size-or crypto-size-extra" data-i18n="trade.or">or</span>
+                <input id="trade-usdt" class="crypto-size-extra" type="number" step="1" min="1" placeholder="USDT $"
+                  title="USDT amount, lots auto-calculated">
+              </div>
+              <div id="trade-value-preview" class="trade-value-preview"></div>
+            </div>
+            <div class="trade-field leverage-field">
+              <label for="trade-leverage" data-i18n="trade.leverage">Leverage</label>
+              <select id="trade-leverage">
+                <option value="1">1×</option>
+                <option value="2">2×</option>
+                <option value="5">5×</option>
+                <option value="10" selected>10×</option>
+                <option value="20">20×</option>
+                <option value="50">50×</option>
+                <option value="100">100×</option>
+                <option value="125">125×</option>
+              </select>
+            </div>
+            <div class="trade-field">
+              <label for="trade-tp" data-i18n="trade.tp">Take Profit</label>
+              <div class="pick-row">
+                <input id="trade-tp" type="number" step="any" placeholder="TP price">
+                <button id="btn-pick-tp" class="pick-btn" type="button" title="Click on chart to set TP"
+                  aria-label="Click on chart to set TP" data-i18n-title="title.pickTp" data-i18n-aria-label="title.pickTp">
+                  <svg class="icon" aria-hidden="true"><use href="#icon-target"></use></svg>
+                </button>
+              </div>
+            </div>
+            <div class="trade-field">
+              <label for="trade-sl" data-i18n="trade.sl">Stop Loss</label>
+              <div class="pick-row">
+                <input id="trade-sl" type="number" step="any" placeholder="SL price">
+                <button id="btn-pick-sl" class="pick-btn" type="button" title="Click on chart to set SL"
+                  aria-label="Click on chart to set SL" data-i18n-title="title.pickSl" data-i18n-aria-label="title.pickSl">
+                  <svg class="icon" aria-hidden="true"><use href="#icon-target"></use></svg>
+                </button>
+              </div>
+            </div>
+            <div class="trade-actions">
+              <button id="btn-place-trade" class="btn-trade-buy" type="button" data-i18n="trade.placeBuy">Place Buy</button>
+              <button id="btn-close-all" class="btn-secondary" type="button" data-i18n="trade.closeAll">Close All</button>
+            </div>
           </div>
-          <div class="acct-item"><span class="acct-label" data-i18n="acct.trades">Trades</span><span id="acct-trades"
-              class="acct-value">0</span></div>
-          <div class="acct-item"><span class="acct-label" data-i18n="acct.win">Win%</span><span id="acct-winrate" class="acct-value">—</span>
-          </div>
-        </div>
-      </div>
 
-      <div class="trade-section" id="records-section">
-        <div class="history-header">
-          <h4 data-i18n="rec.title">战绩</h4>
-          <button id="btn-refresh-records" class="btn-detail" type="button" data-i18n="rec.refresh">刷新</button>
-        </div>
-        <div class="record-filters">
-          <button type="button" class="record-filter active" data-market="all" data-i18n="rec.all">全部</button>
-          <button type="button" class="record-filter" data-market="ashare" data-i18n="rec.ashare">A股</button>
-          <button type="button" class="record-filter" data-market="crypto" data-i18n="rec.crypto">加密</button>
-        </div>
-        <div id="record-summary" class="record-summary">未连接数据库</div>
-        <div id="record-sessions" class="positions-list"></div>
-      </div>
-
-      <div class="trade-section history-section">
-        <div class="history-header">
-          <h4 data-i18n="hist.title">History</h4>
-          <div class="history-actions">
-            <button id="btn-end-session" class="btn-detail" type="button" data-i18n="ai.end">结束本局</button>
-            <button id="btn-open-review" class="btn-detail hidden" type="button" data-i18n="ai.reviewTitle">局后点评</button>
-            <button id="btn-export-history" class="btn-detail" data-i18n="hist.export">⬇ Export</button>
+          <div class="trade-section">
+            <h4 data-i18n="pos.open">Open Positions</h4>
+            <div id="open-positions" class="positions-list">
+              <div class="empty-state">No open positions</div>
+            </div>
           </div>
-        </div>
-        <div id="trade-history" class="positions-list">
-          <div class="empty-state">No closed trades</div>
-        </div>
+
+          <div id="account-info" class="trade-section account-section">
+            <h4 data-i18n="acct.title">Account</h4>
+            <div class="account-grid">
+              <div class="acct-item"><span class="acct-label" data-i18n="acct.balance">Balance</span><span id="acct-balance"
+                  class="acct-value">$10,000.00</span></div>
+              <div class="acct-item"><span class="acct-label" data-i18n="acct.equity">Equity</span><span id="acct-equity"
+                  class="acct-value">$10,000.00</span></div>
+              <div class="acct-item"><span class="acct-label" data-i18n="acct.pnl">P&amp;L</span><span id="acct-pnl"
+                  class="acct-value">$0.00</span></div>
+              <div class="acct-item"><span class="acct-label" data-i18n="acct.trades">Trades</span><span id="acct-trades"
+                  class="acct-value">0</span></div>
+              <div class="acct-item"><span class="acct-label" data-i18n="acct.win">Win%</span><span id="acct-winrate"
+                  class="acct-value">暂无</span></div>
+            </div>
+          </div>
+        </section>
+
+        <section id="panel-page-review" class="panel-page" role="tabpanel" aria-labelledby="panel-tab-review"
+          data-panel-page="review">
+          <div class="trade-section" id="records-section">
+            <div class="history-header">
+              <h4 data-i18n="rec.title">战绩</h4>
+              <button id="btn-refresh-records" class="btn-detail" type="button">
+                <svg class="icon" aria-hidden="true"><use href="#icon-refresh"></use></svg>
+                <span data-i18n="rec.refresh">刷新</span>
+              </button>
+            </div>
+            <div class="record-filters">
+              <button type="button" class="record-filter active" data-market="all" data-i18n="rec.all">全部</button>
+              <button type="button" class="record-filter" data-market="ashare" data-i18n="rec.ashare">A股</button>
+              <button type="button" class="record-filter" data-market="crypto" data-i18n="rec.crypto">加密</button>
+            </div>
+            <div id="record-summary" class="record-summary">未连接数据库</div>
+            <div id="record-sessions" class="positions-list"></div>
+          </div>
+
+          <div class="trade-section history-section">
+            <div class="history-header">
+              <h4 data-i18n="hist.title">History</h4>
+              <div class="history-actions">
+                <button id="btn-end-session" class="btn-detail" type="button" data-i18n="ai.end">结束本局</button>
+                <button id="btn-open-review" class="btn-detail hidden" type="button" data-i18n="ai.reviewTitle">局后点评</button>
+                <button id="btn-export-history" class="btn-detail" type="button">
+                  <svg class="icon" aria-hidden="true"><use href="#icon-export"></use></svg>
+                  <span data-i18n="hist.export">导出 JSON</span>
+                </button>
+              </div>
+            </div>
+            <div id="trade-history" class="positions-list">
+              <div class="empty-state">No closed trades</div>
+            </div>
+          </div>
+        </section>
       </div>
     </aside>
   </div>
 
   <!-- ═══ REPLAY BAR ═══ -->
   <footer id="replay-bar">
-    <div class="replay-controls">
-      <button id="btn-to-start" data-i18n-title="title.start" title="Go to start (Home)" class="ctrl-btn">⏮</button>
-      <button id="btn-step-back" data-i18n-title="title.back" title="Step back" class="ctrl-btn">◀</button>
-      <button id="btn-play" data-i18n-title="title.play" title="Play / Pause" class="ctrl-btn play-btn">▶</button>
-      <button id="btn-step-fwd" data-i18n-title="title.fwd" title="Step forward" class="ctrl-btn">▶</button>
-      <button id="btn-to-end" data-i18n-title="title.end" title="Go to end" class="ctrl-btn">⏭</button>
+    <div class="replay-options">
+      <button id="btn-open-only" class="ctrl-btn ctrl-toggle" type="button" aria-pressed="false"
+        title="Open Only, show candle open price only" data-i18n-title="title.openOnly">
+        <span data-i18n="btn.openOnly">仅开盘价</span>
+      </button>
+      <div class="tf-control">
+        <label class="label" for="timeframe" data-i18n="tf.label">TF</label>
+        <select id="timeframe">
+          <option value="5">5m</option>
+          <option value="15">15m</option>
+          <option value="30">30m</option>
+          <option value="60" selected>1h</option>
+          <option value="120">2h</option>
+          <option value="240">4h</option>
+          <option value="360">6h</option>
+          <option value="720">12h</option>
+          <option value="1440" data-i18n="opt.day">1D</option>
+          <option value="10080" data-i18n="opt.week">1W</option>
+        </select>
+      </div>
+      <div class="speed-control">
+        <div class="speed-head">
+          <label class="label" for="speed-slider" data-i18n="speed.label">Speed</label>
+          <output id="speed-label" for="speed-slider">1×</output>
+        </div>
+        <input id="speed-slider" type="range" min="0" max="7" step="1" value="3" aria-valuetext="1×">
+        <div class="speed-stops" aria-hidden="true">
+          <span data-speed-stop="0">0.1</span>
+          <span data-speed-stop="1">0.25</span>
+          <span data-speed-stop="2">0.5</span>
+          <span data-speed-stop="3" class="active">1</span>
+          <span data-speed-stop="4">2</span>
+          <span data-speed-stop="5">5</span>
+          <span data-speed-stop="6">10</span>
+          <span data-speed-stop="7">20</span>
+        </div>
+      </div>
     </div>
-    <button id="btn-open-only" class="ctrl-btn" title="Open Only — show candle open price only (toggle)">O</button>
-    <div class="tf-control">
-      <span class="label" data-i18n="tf.label">TF</span>
-      <select id="timeframe">
-        <option value="5">5m</option>
-        <option value="15">15m</option>
-        <option value="30">30m</option>
-        <option value="60" selected>1h</option>
-        <option value="120">2h</option>
-        <option value="240">4h</option>
-        <option value="360">6h</option>
-        <option value="720">12h</option>
-        <option value="1440" data-i18n="opt.day">1D</option>
-        <option value="10080" data-i18n="opt.week">1W</option>
-      </select>
+
+    <div class="replay-controls" role="group" aria-label="回放控制">
+      <button id="btn-to-start" type="button" data-i18n-title="title.start" data-i18n-aria-label="title.start"
+        title="Go to start (Home)" aria-label="Go to start" class="ctrl-btn">
+        <svg class="icon" aria-hidden="true"><use href="#icon-skip-back"></use></svg>
+      </button>
+      <button id="btn-step-back" type="button" data-i18n-title="title.back" data-i18n-aria-label="title.back"
+        title="Step back" aria-label="Step back" class="ctrl-btn">
+        <svg class="icon" aria-hidden="true"><use href="#icon-step-back"></use></svg>
+      </button>
+      <button id="btn-play" type="button" data-i18n-title="title.play" data-i18n-aria-label="title.play"
+        title="Play / Pause" aria-label="Play / Pause" aria-pressed="false" class="ctrl-btn play-btn">
+        <svg class="icon play-icon" aria-hidden="true"><use href="#icon-play"></use></svg>
+      </button>
+      <button id="btn-step-fwd" type="button" data-i18n-title="title.fwd" data-i18n-aria-label="title.fwd"
+        title="Step forward" aria-label="Step forward" class="ctrl-btn">
+        <svg class="icon" aria-hidden="true"><use href="#icon-step-forward"></use></svg>
+      </button>
+      <button id="btn-to-end" type="button" data-i18n-title="title.end" data-i18n-aria-label="title.end"
+        title="Go to end" aria-label="Go to end" class="ctrl-btn">
+        <svg class="icon" aria-hidden="true"><use href="#icon-skip-forward"></use></svg>
+      </button>
     </div>
-    <div class="speed-control">
-      <span class="label" data-i18n="speed.label">Speed</span>
-      <input id="speed-slider" type="range" min="0.1" max="20" step="0.1" value="1">
-      <span id="speed-label">1×</span>
+
+    <div class="replay-status">
+      <div class="progress-wrap">
+        <input id="progress-bar" type="range" min="0" max="100" value="0" aria-label="回放进度"
+          data-i18n-aria-label="progress.label">
+        <span id="bar-counter" class="num">0 / 0</span>
+      </div>
+      <div id="current-datetime" class="datetime-display num">等待数据</div>
     </div>
-    <div class="progress-wrap">
-      <input id="progress-bar" type="range" min="0" max="100" value="0">
-      <span id="bar-counter">0 / 0</span>
-    </div>
-    <div id="current-datetime" class="datetime-display">—</div>
   </footer>
 
   <!-- ═══ CSV Mapping Modal ═══ -->
@@ -331,8 +463,8 @@
       <p class="modal-hint">Preview of first 3 rows. Assign each column:</p>
       <div id="csv-mapping-table"></div>
       <div class="modal-actions">
-        <button id="csv-confirm" class="btn-primary">Load Data</button>
-        <button id="csv-cancel" class="btn-secondary">Cancel</button>
+        <button id="csv-confirm" class="btn-primary" type="button">Load Data</button>
+        <button id="csv-cancel" class="btn-secondary" type="button">Cancel</button>
       </div>
     </div>
   </div>
@@ -340,7 +472,7 @@
   <!-- ═══ PineScript Editor Modal ═══ -->
   <div id="pine-modal" class="modal hidden">
     <div class="modal-content modal-wide">
-      <h3>📝 PineScript Indicator</h3>
+      <h3>PineScript Indicator</h3>
       <p class="modal-hint">Supported: ta.sma(), ta.ema(), ta.rsi(), plot(), close/open/high/low, input.int/float, basic
         math.</p>
       <div class="pine-editor-wrap">
@@ -352,8 +484,8 @@ plot(myFast, title=&quot;Fast SMA&quot;, color=orange)
 plot(mySlow, title=&quot;Slow SMA&quot;, color=aqua)"></textarea>
       </div>
       <div class="modal-actions">
-        <button id="pine-save" class="btn-primary">Save & Apply</button>
-        <button id="pine-cancel" class="btn-secondary">Cancel</button>
+        <button id="pine-save" class="btn-primary" type="button">Save &amp; Apply</button>
+        <button id="pine-cancel" class="btn-secondary" type="button">Cancel</button>
       </div>
     </div>
   </div>
@@ -363,7 +495,7 @@ plot(mySlow, title=&quot;Slow SMA&quot;, color=aqua)"></textarea>
     <div class="modal-content modal-wide">
       <div class="modal-header">
         <h3>Trade Details</h3>
-        <button id="btn-close-detail-modal" class="modal-x">✕</button>
+        <button id="btn-close-detail-modal" class="modal-x" type="button" aria-label="关闭交易详情">×</button>
       </div>
       <div id="trade-detail-body" class="trade-detail-body"></div>
     </div>
@@ -373,7 +505,7 @@ plot(mySlow, title=&quot;Slow SMA&quot;, color=aqua)"></textarea>
     <div class="modal-content">
       <div class="modal-header">
         <h3 data-i18n="ai.configTitle">AI 配置</h3>
-        <button id="btn-close-ai-config" class="modal-x" type="button">✕</button>
+        <button id="btn-close-ai-config" class="modal-x" type="button" aria-label="关闭 AI 配置">×</button>
       </div>
       <p class="modal-hint" data-i18n="ai.configHint">Key 只保存在本机服务端，不会写入浏览器。</p>
       <label class="ai-field"><span data-i18n="ai.baseUrl">接口地址</span>
@@ -397,7 +529,7 @@ plot(mySlow, title=&quot;Slow SMA&quot;, color=aqua)"></textarea>
     <div class="modal-content modal-wide">
       <div class="modal-header">
         <h3 data-i18n="ai.reviewTitle">局后点评</h3>
-        <button id="btn-close-ai-review" class="modal-x" type="button">✕</button>
+        <button id="btn-close-ai-review" class="modal-x" type="button" aria-label="关闭局后点评">×</button>
       </div>
       <div id="ai-review-facts" class="ai-facts"></div>
       <div class="modal-actions">

@@ -361,7 +361,7 @@ function showPropFirmSetup(onStart) {
 
     acctSection.innerHTML = `
     <div class="pf-setup">
-        <div class="pf-setup-title">🏢 Maven Challenge</div>
+        <div class="pf-setup-title">Maven Challenge</div>
         <label class="pf-setup-label">Plan
             <select id="pf-plan">${plansHTML}</select>
         </label>

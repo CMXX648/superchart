@@ -26,13 +26,13 @@ KLinePlayground/       只复用行情代码，不提交
 
 ## 进度
 
-用户已确认：Flask 服务能交易，平仓后侧栏战绩会出现。
+阶段 4 局后 AI 已接入。阶段 5 未开始。
 
 已有：市场开关和规则分叉；`/static` 托管；SQLite 的 `candles`、`users`、`sessions`、`trades`；A 股日线接口与缓存；日线基准周期；战绩按全部/A股/加密过滤；右上角中文/EN，选择存在 `localStorage` 的 `lbr_lang`。
 
-已有补充：局后 AI。`GET/POST /api/ai/config` 只返回掩码；`POST /api/ai/review` 在结束本局后点评。Key 在 `data/ai_config.json`，不进浏览器。没有 Key 时返回错误，不生成假点评。
+局后 AI：右上角配置页，侧栏「结束本局」后点评。`GET/POST /api/ai/config` 只返回掩码；`POST /api/ai/review` 调 OpenAI 兼容接口。Key 在 `data/ai_config.json`，不进浏览器。没有 Key 时返回错误，不生成假点评。解析失败展示原文，不编造分数。提示词按市场切换。本地测试不调用真实模型，没有 Key 的环境不记为通过。
 
-未做：bridge 下单走市场规则。佣金、T+1、印花税有代码，尚未单列验收记录。
+未做：bridge 下单走当前市场规则；逐根决策。佣金、T+1、印花税有代码，尚未单列验收记录。
 
 ## 提交
 

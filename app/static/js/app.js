@@ -145,6 +145,7 @@
     btnOpenOnly.addEventListener('click', () => {
         ReplayEngine.openOnly = !ReplayEngine.openOnly;
         btnOpenOnly.classList.toggle('ctrl-active', ReplayEngine.openOnly);
+        btnOpenOnly.setAttribute('aria-pressed', String(ReplayEngine.openOnly));
         ReplayEngine._renderFrame(false);
     });
 
@@ -218,9 +219,17 @@
     csvCancel.addEventListener('click', () => { csvModal.classList.add('hidden'); csvParsedData = null; });
 
     // ─── Indicator Dropdown ───
-    btnIndicators.addEventListener('click', (e) => { e.stopPropagation(); indDropdown.classList.toggle('hidden'); renderPineList(); });
+    btnIndicators.addEventListener('click', (e) => {
+        e.stopPropagation();
+        indDropdown.classList.toggle('hidden');
+        btnIndicators.setAttribute('aria-expanded', String(!indDropdown.classList.contains('hidden')));
+        renderPineList();
+    });
     document.addEventListener('click', (e) => {
-        if (!indDropdown.contains(e.target) && e.target !== btnIndicators) indDropdown.classList.add('hidden');
+        if (!indDropdown.contains(e.target) && e.target !== btnIndicators) {
+            indDropdown.classList.add('hidden');
+            btnIndicators.setAttribute('aria-expanded', 'false');
+        }
     });
 
     function readIndicatorState() {
@@ -248,7 +257,11 @@
         ReplayEngine._renderFrame(false);
     }
 
-    indApply.addEventListener('click', () => { applyIndicators(); indDropdown.classList.add('hidden'); });
+    indApply.addEventListener('click', () => {
+        applyIndicators();
+        indDropdown.classList.add('hidden');
+        btnIndicators.setAttribute('aria-expanded', 'false');
+    });
     indicatorChecks.forEach(cb => { cb.addEventListener('change', applyIndicators); });
 
     // ─── PineScript Editor ───
@@ -367,7 +380,7 @@
         if (!price || lots <= 0) { tradeValuePreview.textContent = ''; return; }
         const notional = lots * price;
         const margin = notional / lev;
-        tradeValuePreview.textContent = `≈ $${notional.toLocaleString(undefined, {maximumFractionDigits: 2})} value · $${margin.toLocaleString(undefined, {maximumFractionDigits: 2})} margin`;
+        tradeValuePreview.textContent = `≈ $${notional.toLocaleString(undefined, {maximumFractionDigits: 2})} value, $${margin.toLocaleString(undefined, {maximumFractionDigits: 2})} margin`;
     }
     tradeLots.addEventListener('input', updateTradeValuePreview);
     tradeLeverage.addEventListener('change', updateTradeValuePreview);
@@ -547,7 +560,7 @@
             const label = Number.isFinite(ret) ? ((ret >= 0 ? '+' : '') + ret.toFixed(2) + '%') : '—';
             return '<div class="record-row">' + I18n.t(s.market === 'ashare' ? 'rec.ashare' : 'rec.crypto')
                 + ' ' + (s.symbol || '—') + ' ' + label
-                + ' · ' + (s.trade_count || 0) + '笔</div>';
+                + ', ' + (s.trade_count || 0) + '笔</div>';
         }).join('');
     }
 
@@ -565,11 +578,99 @@
         }
     }
 
+    // ─── Workspace panel ───
+    function initWorkspacePanel() {
+        const panel = document.getElementById('trading-panel');
+        if (!panel) return;
+
+        const tabs = [...panel.querySelectorAll('.panel-tab')];
+        const pages = [...panel.querySelectorAll('.panel-page')];
+        const toggle = document.getElementById('btn-panel-toggle');
+        const mobileQuery = window.matchMedia('(max-width: 40rem)');
+
+        function selectPanelPage(name, focus) {
+            const active = tabs.find(tab => tab.dataset.panelName === name) ? name : 'trade';
+            tabs.forEach((tab) => {
+                const selected = tab.dataset.panelName === active;
+                tab.classList.toggle('active', selected);
+                tab.setAttribute('aria-selected', String(selected));
+                tab.tabIndex = selected ? 0 : -1;
+                if (selected && focus) tab.focus();
+            });
+            pages.forEach((page) => {
+                const selected = page.dataset.panelPage === active;
+                page.classList.toggle('active', selected);
+                page.hidden = !selected;
+            });
+            localStorage.setItem('lbr_panel_tab', active);
+        }
+
+        function setPanelCollapsed(collapsed, persist) {
+            panel.classList.toggle('is-collapsed', collapsed);
+            toggle.setAttribute('aria-expanded', String(!collapsed));
+            const key = collapsed ? 'panel.expand' : 'panel.collapse';
+            toggle.dataset.i18nAriaLabel = key;
+            toggle.dataset.i18nTitle = key;
+            toggle.setAttribute('aria-label', I18n.t(key));
+            toggle.title = I18n.t(key);
+            if (persist) localStorage.setItem('lbr_panel_collapsed', collapsed ? '1' : '0');
+            if (ChartManager._scheduleResize) ChartManager._scheduleResize();
+        }
+
+        panel.classList.add('panel-enhanced');
+        const savedCollapsed = localStorage.getItem('lbr_panel_collapsed');
+        setPanelCollapsed(savedCollapsed === null ? mobileQuery.matches : savedCollapsed === '1', false);
+        selectPanelPage(localStorage.getItem('lbr_panel_tab') || 'trade', false);
+
+        tabs.forEach((tab) => {
+            tab.addEventListener('click', () => selectPanelPage(tab.dataset.panelName, false));
+            tab.addEventListener('keydown', (e) => {
+                const index = tabs.indexOf(tab);
+                let next = null;
+                if (e.key === 'ArrowRight') next = (index + 1) % tabs.length;
+                if (e.key === 'ArrowLeft') next = (index - 1 + tabs.length) % tabs.length;
+                if (e.key === 'Home') next = 0;
+                if (e.key === 'End') next = tabs.length - 1;
+                if (next === null) return;
+                e.preventDefault();
+                selectPanelPage(tabs[next].dataset.panelName, true);
+            });
+        });
+
+        toggle.addEventListener('click', () => {
+            setPanelCollapsed(!panel.classList.contains('is-collapsed'), true);
+        });
+    }
+
+    function initInfoTips() {
+        const tips = [...document.querySelectorAll('.info-tip')];
+        const closeTips = (except) => tips.forEach((tip) => {
+            if (tip !== except) tip.setAttribute('aria-expanded', 'false');
+        });
+
+        tips.forEach((tip) => {
+            tip.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const open = tip.getAttribute('aria-expanded') !== 'true';
+                closeTips(tip);
+                tip.setAttribute('aria-expanded', String(open));
+            });
+            tip.addEventListener('keydown', (e) => {
+                if (e.key !== 'Escape') return;
+                tip.setAttribute('aria-expanded', 'false');
+                tip.blur();
+            });
+        });
+        document.addEventListener('click', () => closeTips());
+    }
+
     // ─── Boot ───
     function boot() {
         setDefaultDates();
         restoreIndicatorPrefs();
         PineEngine.init();
+        initWorkspacePanel();
+        initInfoTips();
         ChartManager.init();
         ReplayEngine.init();
         BridgeClient.init();
@@ -599,6 +700,7 @@
         I18n.onChange = () => {
             MarketController.applyChrome();
             TradingEngine.updateUI();
+            ReplayEngine._updateSpeedLabel();
             refreshRecords();
         };
         MarketController.init();

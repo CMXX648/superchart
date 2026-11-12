@@ -77,7 +77,7 @@ const BridgeClient = {
                 icon = document.createElement('button');
                 icon.id = 'bridge-icon';
                 icon.className = 'btn-secondary bridge-btn';
-                icon.innerHTML = '🧩 Bridge';
+                icon.innerHTML = 'Bridge';
                 icon.title = 'ML Bridge Connected';
                 icon.addEventListener('click', () => this._togglePanel());
                 const header = document.getElementById('asset-panel');
@@ -98,7 +98,7 @@ const BridgeClient = {
             panel.className = 'bridge-panel';
             panel.innerHTML = `
         <div class="bridge-panel-header">
-          <span>🧩 ML Bridge</span>
+          <span>ML Bridge</span>
           <span class="bridge-status">● Connected</span>
         </div>
         <div id="bridge-log" class="bridge-log"></div>

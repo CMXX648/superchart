@@ -1,5 +1,7 @@
 /* ═══════════════ Replay Engine ═══════════════ */
 
+const SPEED_STOPS = [0.1, 0.25, 0.5, 1, 2, 5, 10, 20];
+
 const ReplayEngine = {
     baseData: [],
     baseIntervalMinutes: 5,
@@ -7,6 +9,7 @@ const ReplayEngine = {
     replayIndex: 0,
     isPlaying: false,
     speed: 1,
+    speedIndex: 3,
     _timer: null,
     _userScrolled: false,
     openOnly: false, // When true, show only the open price of the current candle
@@ -24,16 +27,14 @@ const ReplayEngine = {
             playBtn: document.getElementById('btn-play'),
             speedSlider: document.getElementById('speed-slider'),
             speedLabel: document.getElementById('speed-label'),
+            speedStops: [...document.querySelectorAll('[data-speed-stop]')],
             progressBar: document.getElementById('progress-bar'),
             barCounter: document.getElementById('bar-counter'),
             datetime: document.getElementById('current-datetime'),
         };
 
         this.dom.speedSlider.addEventListener('input', () => {
-            this.speed = parseFloat(this.dom.speedSlider.value);
-            this._updateSpeedLabel();
-            this._syncSubMode();
-            if (this.isPlaying) this._restartTimer();
+            this.setSpeed(parseInt(this.dom.speedSlider.value, 10));
         });
 
         this.dom.progressBar.addEventListener('input', () => {
@@ -60,38 +61,56 @@ const ReplayEngine = {
                 case 'ArrowLeft': e.preventDefault(); this.stepBack(); break;
                 case 'Equal': case 'NumpadAdd':
                     e.preventDefault();
-                    this.speed = Math.min(20, +(this.speed + (this.speed < 1 ? 0.1 : 0.5)).toFixed(1));
-                    this.dom.speedSlider.value = this.speed;
-                    this._updateSpeedLabel();
-                    this._syncSubMode();
-                    if (this.isPlaying) this._restartTimer();
+                    this.setSpeed(this.speedIndex + 1);
                     break;
                 case 'Minus': case 'NumpadSubtract':
                     e.preventDefault();
-                    this.speed = Math.max(0.1, +(this.speed - (this.speed <= 1 ? 0.1 : 0.5)).toFixed(1));
-                    this.dom.speedSlider.value = this.speed;
-                    this._updateSpeedLabel();
-                    this._syncSubMode();
-                    if (this.isPlaying) this._restartTimer();
+                    this.setSpeed(this.speedIndex - 1);
                     break;
                 case 'Home': e.preventDefault(); this.goToStart(); break;
                 case 'End': e.preventDefault(); this.goToEnd(); break;
             }
         });
+
+        this.setSpeed(parseInt(this.dom.speedSlider.value, 10), false);
+    },
+
+    setSpeed(index, restart) {
+        const next = Math.max(0, Math.min(SPEED_STOPS.length - 1, Number.isFinite(index) ? index : this.speedIndex));
+        const changed = next !== this.speedIndex;
+        this.speedIndex = next;
+        this.speed = SPEED_STOPS[next];
+        this.dom.speedSlider.value = String(next);
+        this._syncSubMode();
+        this._updateSpeedLabel();
+        if (restart !== false && changed && this.isPlaying) this._restartTimer();
     },
 
     _updateSpeedLabel() {
-        if (this.speed < 1 && this.currentTF > (this.baseIntervalMinutes || 5)) {
-            // Show sub-candle indicator
-            this.dom.speedLabel.textContent = this.speed.toFixed(1) + '× (sub)';
-        } else {
-            this.dom.speedLabel.textContent = (this.speed % 1 === 0 ? this.speed : this.speed.toFixed(1)) + '×';
-        }
+        const label = String(this.speed) + '×';
+        const sub = this.speed < 1 && this.currentTF > (this.baseIntervalMinutes || 5);
+        this.dom.speedLabel.textContent = sub ? label + ' (' + I18n.t('speed.sub') + ')' : label;
+        this.dom.speedSlider.setAttribute('aria-valuetext', sub ? label + ', ' + I18n.t('speed.sub') : label);
+        this.dom.speedStops.forEach((stop) => {
+            stop.classList.toggle('active', Number(stop.dataset.speedStop) === this.speedIndex);
+        });
+    },
+
+    _setPlayVisual(isPlaying) {
+        const use = this.dom.playBtn.querySelector('use');
+        if (use) use.setAttribute('href', isPlaying ? '#icon-pause' : '#icon-play');
+        this.dom.playBtn.classList.toggle('playing', isPlaying);
+        this.dom.playBtn.setAttribute('aria-pressed', String(isPlaying));
     },
 
     /** Enter or exit sub-candle mode based on current speed and timeframe. */
     _syncSubMode() {
         const shouldBeSub = this.speed < 1 && this.currentTF > (this.baseIntervalMinutes || 5);
+
+        if (!this.baseData.length) {
+            this._subMode = false;
+            return;
+        }
 
         if (shouldBeSub && !this._subMode) {
             // Entering sub-mode: convert replayIndex to base index
@@ -112,6 +131,7 @@ const ReplayEngine = {
         this.replayIndex = 0;
         this._baseIdx = 0;
         this._syncSubMode();
+        this._updateSpeedLabel();
         this._renderFrame(true);
     },
 
@@ -129,6 +149,7 @@ const ReplayEngine = {
         }
         this.replayIndex = bestIdx;
         this._syncSubMode();
+        this._updateSpeedLabel();
         this._renderFrame(true);
         if (wasPlaying) this.play();
     },
@@ -148,15 +169,13 @@ const ReplayEngine = {
             if (this.replayIndex >= total - 1) this.replayIndex = 0;
         }
         this.isPlaying = true;
-        this.dom.playBtn.textContent = '⏸';
-        this.dom.playBtn.classList.add('playing');
+        this._setPlayVisual(true);
         this._restartTimer();
     },
 
     pause() {
         this.isPlaying = false;
-        this.dom.playBtn.textContent = '▶';
-        this.dom.playBtn.classList.remove('playing');
+        this._setPlayVisual(false);
         if (this._timer) { clearInterval(this._timer); this._timer = null; }
     },
 

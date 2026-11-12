@@ -20,6 +20,8 @@ const ChartManager = {
     _pickMode: null, // null | 'tp' | 'sl'
 
     _resizeHandler: null,
+    _resizeFrame: null,
+    _resizeObserver: null,
     _lastCandles: null,
 
     params: {
@@ -105,9 +107,13 @@ const ChartManager = {
             this.exitPickMode();
         });
 
-        this._resizeHandler = () => this.resize();
+        this._resizeHandler = () => this._scheduleResize();
         window.addEventListener('resize', this._resizeHandler);
-        setTimeout(() => this.resize(), 50);
+        if ('ResizeObserver' in window) {
+            this._resizeObserver = new ResizeObserver(() => this._scheduleResize());
+            this._resizeObserver.observe(document.getElementById('chart-area'));
+        }
+        this._scheduleResize();
     },
 
     // ── Pick mode management ──
@@ -225,10 +231,19 @@ const ChartManager = {
     destroyRSIChart() { if (!this.rsiChart) return; this.rsiChart.remove(); this.rsiChart = null; this.rsiSeries = null; document.getElementById('chart-rsi').classList.add('hidden'); this.resize(); },
     destroyMACDChart() { if (!this.macdChart) return; this.macdChart.remove(); this.macdChart = null; this.macdLineSeries = null; this.macdSignalSeries = null; this.macdHistSeries = null; document.getElementById('chart-macd').classList.add('hidden'); this.resize(); },
 
+    _scheduleResize() {
+        if (this._resizeFrame) return;
+        this._resizeFrame = requestAnimationFrame(() => {
+            this._resizeFrame = null;
+            this.resize();
+        });
+    },
+
     resize() {
         for (const [chart, id] of [[this.mainChart, 'chart-main'], [this.volChart, 'chart-vol'], [this.rsiChart, 'chart-rsi'], [this.macdChart, 'chart-macd']]) {
             if (!chart) continue;
             const el = document.getElementById(id);
+            if (!el || !el.clientWidth || !el.clientHeight) continue;
             chart.resize(el.clientWidth, el.clientHeight);
         }
     },

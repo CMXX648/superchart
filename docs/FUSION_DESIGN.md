@@ -10,11 +10,15 @@
 
 ## 当前进度（2026-11-12）
 
+阶段 4 已接入。阶段 5 未开始。
+
 用户已确认：用 `python run.py` 打开 `http://127.0.0.1:8765` 后，可以交易，平仓后侧栏战绩会出现。
 
-已落地：市场开关与规则分叉；Flask 应用工厂和 `/static`；SQLite `data/replay.sqlite`（`candles`、`users`、`sessions`、`trades`）；A 股日线读取与缓存；战绩按全部/A股/加密过滤；右上角语言切换，选择存在浏览器 `localStorage` 的 `lbr_lang`。
+已落地：市场开关与规则分叉；Flask 应用工厂和 `/static`；SQLite `data/replay.sqlite`（`candles`、`users`、`sessions`、`trades`）；A 股日线读取与缓存；日线基准周期；战绩按全部/A股/加密过滤；右上角语言切换，选择存在浏览器 `localStorage` 的 `lbr_lang`；局后 AI（`app/services/ai_review.py`，配置页和结束本局后的点评）。
 
-下一步：bridge 下单必须走当前市场规则。局后 AI 已接入：Key 在服务端 `data/ai_config.json`，结束本局后请求 `POST /api/ai/review`。没有 Key 时返回错误，不生成假点评。佣金、T+1、印花税已有代码，还没有单独的验收记录。
+局后 AI 口径：Key 在服务端 `data/ai_config.json`。`GET/POST /api/ai/config` 只返回掩码。`POST /api/ai/review` 调用 OpenAI 兼容 `/chat/completions`。没有 Key 时返回错误，不生成假点评。解析失败展示原文，不编造分数。没有 Key 的环境不把真实模型调用记为通过。
+
+下一步：bridge 下单必须走当前市场规则。佣金、T+1、印花税已有代码，还没有单独的验收记录。
 
 日常进度以 `AGENTS.md` 为准。本节只在阶段切换时更新。
 
@@ -415,11 +419,15 @@ CSV 仍可导入。导入后服从当前市场规则。界面要始终显示当�
 
 ### 阶段 4：AI 局后点评
 
+状态：已接入。入口是「结束本局」。真实模型调用未在无 Key 环境里记为通过。
+
 - 配置页和点评按钮。
 - 无 Key 时给出明确错误。
 - 有 Key 时，点评包含代码、收益和至少一笔交易。没有 Key 的环境不伪造通过。
 
 ### 阶段 5：实时介入
+
+状态：未开始。
 
 - bridge 下单走市场规则。
 - 再接逐根决策。

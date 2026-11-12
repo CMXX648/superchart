@@ -1,0 +1,242 @@
+/* UI language. Choice is stored in localStorage and applied on startup. */
+
+const I18n = {
+    storageKey: 'lbr_lang',
+    lang: 'zh',
+    onChange: null,
+    dict: {
+        zh: {
+            'market.crypto': '加密货币',
+            'market.ashare': 'A股',
+            'server.online': '数据库已连接',
+            'server.offline': '未连接 Flask',
+            'tab.crypto': 'Crypto',
+            'tab.forex': 'Forex',
+            'tab.ashare': 'A股数据',
+            'tab.csv': '导入 CSV',
+            'btn.fetchBinance': '从 Binance 获取',
+            'btn.clearCache': '清除缓存',
+            'btn.downloadCsv': '⬇ CSV',
+            'btn.fetchAshare': '获取日线',
+            'btn.fetchMt5': '从 MT5 获取',
+            'opt.anyCrypto': '其他币种…',
+            'opt.qfq': '前复权',
+            'opt.none': '不复权',
+            'opt.hfq': '后复权',
+            'note.refresh': '强制更新',
+            'note.ashare': '通过 Flask 读取并写入数据库。未启动服务时不能拉 A 股。',
+            'csv.choose': '选择 CSV 文件…',
+            'btn.indicators': '📊 指标',
+            'btn.apply': '应用',
+            'trade.title': '交易',
+            'trade.buy': '买入',
+            'trade.sell': '卖出',
+            'trade.buyLong': '买入 / 做多',
+            'trade.sellShort': '卖出 / 做空',
+            'trade.size': '数量',
+            'trade.lots': '手数',
+            'trade.or': '或',
+            'trade.leverage': '杠杆',
+            'trade.tp': '止盈',
+            'trade.sl': '止损',
+            'trade.placeBuy': '买入',
+            'trade.placeSell': '卖出',
+            'trade.closeAll': '全部平仓',
+            'pos.open': '持仓',
+            'acct.title': '账户',
+            'acct.balance': '余额',
+            'acct.equity': '权益',
+            'acct.pnl': '盈亏',
+            'acct.trades': '成交',
+            'acct.win': '胜率',
+            'rec.title': '战绩',
+            'rec.refresh': '刷新',
+            'rec.all': '全部',
+            'rec.ashare': 'A股',
+            'rec.crypto': '加密',
+            'rec.empty': '暂无已保存回合',
+            'rec.offline': '未连接数据库',
+            'rec.fail': '战绩读取失败',
+            'hist.title': '本局记录',
+            'hist.export': '⬇ 导出',
+            'tf.label': '周期',
+            'speed.label': '速度',
+            'user.title': '用户名，交易记录按此写入数据库',
+            'rule.ashare': '当前规则：A股 · 只做多 · 1手=100股 · T+1 · 模拟佣金/印花税 · 杠杆不可用',
+            'rule.crypto': '当前规则：加密货币 · 可多空 · 杠杆',
+            'switch.confirm': '切换市场会平掉当前可卖持仓，并清空图上的回放。两个市场的资金分开。继续？',
+            'switch.ashare': '已切换到 A股规则',
+            'switch.crypto': '已切换到加密货币规则',
+            'err.noPrice': '没有当前价格，不能平仓，因此不能切换市场',
+            'err.t1switch': 'T+1 未满足，不能卖出，因此不能切换市场',
+            'err.stillOpen': '仍有未平仓位，不能切换市场',
+            'err.t1sell': 'T+1，当日买入不能卖出',
+            'err.t1partial': 'T+1，部分持仓当日不能卖出',
+            'err.t1tpsl': 'T+1，止损/止盈未执行',
+            'ashare.lot': 'A股数量必须是整数手（1手=100股）',
+            'ashare.noShort': 'A股不能开空；没有可卖数量（当日买入受 T+1 限制）',
+            'ashare.noPrice': '没有可用价格',
+            'ashare.noCash': '可用资金不足（含模拟佣金）',
+            'ashare.sellLimit': '可卖 {have} 手，不能卖出 {want} 手',
+            'fetch.needServer': '请先运行 python run.py，再用 http://127.0.0.1:8765 打开。',
+            'fetch.badCode': '请输入 6 位股票代码',
+            'fetch.loading': '正在读取 {code} ...',
+            'fetch.empty': '没有可回放的日线',
+            'fetch.loaded': '已加载 {count} 根日线（{where}）',
+            'fetch.db': '数据库',
+            'fetch.source': '行情源',
+            'empty.positions': '暂无持仓',
+            'empty.history': '暂无已平仓记录',
+            'rec.line': '局数 {n} · 均收益 {avg} · 最佳 {best} · 最差 {worst} · 交易胜率 {win}',
+            'title.start': '回到开始',
+            'title.back': '后退一根',
+            'title.play': '播放 / 暂停',
+            'title.fwd': '前进一根',
+            'title.end': '跳到结尾',
+            'title.openOnly': '只看开盘价',
+            'opt.day': '日K',
+            'opt.week': '周K',
+            'preview.ashare': '{hands}手 = {shares}股，成交额 ¥{amount}，模拟佣金 ¥{fee}',
+        },
+        en: {
+            'market.crypto': 'Crypto',
+            'market.ashare': 'A-share',
+            'server.online': 'Database connected',
+            'server.offline': 'Flask offline',
+            'tab.crypto': 'Crypto',
+            'tab.forex': 'Forex',
+            'tab.ashare': 'A-share data',
+            'tab.csv': 'Load CSV',
+            'btn.fetchBinance': 'Fetch from Binance',
+            'btn.clearCache': 'Clear Cache',
+            'btn.downloadCsv': '⬇ CSV',
+            'btn.fetchAshare': 'Fetch daily',
+            'btn.fetchMt5': 'Fetch from MT5',
+            'opt.anyCrypto': 'Any Crypto…',
+            'opt.qfq': 'Forward adj.',
+            'opt.none': 'No adjust',
+            'opt.hfq': 'Backward adj.',
+            'note.refresh': 'Force refresh',
+            'note.ashare': 'Loaded through Flask and saved to the database. A-share fetch needs the server.',
+            'csv.choose': 'Choose CSV file…',
+            'btn.indicators': '📊 Indicators',
+            'btn.apply': 'Apply Changes',
+            'trade.title': 'Trade',
+            'trade.buy': 'Buy',
+            'trade.sell': 'Sell',
+            'trade.buyLong': 'Buy / Long',
+            'trade.sellShort': 'Sell / Short',
+            'trade.size': 'Size',
+            'trade.lots': 'Lots',
+            'trade.or': 'or',
+            'trade.leverage': 'Leverage',
+            'trade.tp': 'Take Profit',
+            'trade.sl': 'Stop Loss',
+            'trade.placeBuy': 'Place Buy',
+            'trade.placeSell': 'Place Sell',
+            'trade.closeAll': 'Close All',
+            'pos.open': 'Open Positions',
+            'acct.title': 'Account',
+            'acct.balance': 'Balance',
+            'acct.equity': 'Equity',
+            'acct.pnl': 'P&L',
+            'acct.trades': 'Trades',
+            'acct.win': 'Win%',
+            'rec.title': 'Records',
+            'rec.refresh': 'Refresh',
+            'rec.all': 'All',
+            'rec.ashare': 'A-share',
+            'rec.crypto': 'Crypto',
+            'rec.empty': 'No saved sessions',
+            'rec.offline': 'Database offline',
+            'rec.fail': 'Could not load records',
+            'hist.title': 'Session history',
+            'hist.export': '⬇ Export',
+            'tf.label': 'TF',
+            'speed.label': 'Speed',
+            'user.title': 'Username used for saved trades',
+            'rule.ashare': 'Rules: A-share · long only · 1 lot = 100 shares · T+1 · simulated fees · no leverage',
+            'rule.crypto': 'Rules: crypto · long/short · leverage',
+            'switch.confirm': 'Switching market closes sellable positions and clears the replay. Balances stay separate. Continue?',
+            'switch.ashare': 'Switched to A-share rules',
+            'switch.crypto': 'Switched to crypto rules',
+            'err.noPrice': 'No current price, cannot close positions, so the market cannot be switched',
+            'err.t1switch': 'T+1 blocks the sale, so the market cannot be switched',
+            'err.stillOpen': 'Positions remain open, market not switched',
+            'err.t1sell': 'T+1: shares bought today cannot be sold',
+            'err.t1partial': 'T+1: some lots cannot be sold today',
+            'err.t1tpsl': 'T+1: stop or target was not executed',
+            'ashare.lot': 'A-share quantity must be a whole number of lots (1 lot = 100 shares)',
+            'ashare.noShort': 'A-share cannot open a short; no sellable shares (T+1)',
+            'ashare.noPrice': 'No price available',
+            'ashare.noCash': 'Not enough cash, including simulated commission',
+            'ashare.sellLimit': 'Sellable {have} lots, cannot sell {want}',
+            'fetch.needServer': 'Run python run.py and open http://127.0.0.1:8765.',
+            'fetch.badCode': 'Enter a 6-digit stock code',
+            'fetch.loading': 'Loading {code} ...',
+            'fetch.empty': 'No daily bars to replay',
+            'fetch.loaded': 'Loaded {count} daily bars ({where})',
+            'fetch.db': 'database',
+            'fetch.source': 'feed',
+            'empty.positions': 'No open positions',
+            'empty.history': 'No closed trades',
+            'rec.line': 'Sessions {n} · Avg {avg} · Best {best} · Worst {worst} · Trade win {win}',
+            'title.start': 'Go to start',
+            'title.back': 'Step back',
+            'title.play': 'Play / Pause',
+            'title.fwd': 'Step forward',
+            'title.end': 'Go to end',
+            'title.openOnly': 'Open only',
+            'opt.day': '1D',
+            'opt.week': '1W',
+            'preview.ashare': '{hands} lots = {shares} shares, notional ¥{amount}, fee ¥{fee}',
+        },
+    },
+
+    t(key, vars) {
+        const table = this.dict[this.lang] || this.dict.zh;
+        let text = table[key] || this.dict.zh[key] || key;
+        if (vars) {
+            Object.keys(vars).forEach((name) => {
+                text = text.replace('{' + name + '}', vars[name]);
+            });
+        }
+        return text;
+    },
+
+    load() {
+        const saved = localStorage.getItem(this.storageKey);
+        this.lang = saved === 'en' ? 'en' : 'zh';
+    },
+
+    init() {
+        this.load();
+        this.apply();
+        document.querySelectorAll('#lang-switch .lang-btn').forEach((btn) => {
+            btn.addEventListener('click', () => this.set(btn.dataset.lang));
+        });
+    },
+
+    set(lang) {
+        this.lang = lang === 'en' ? 'en' : 'zh';
+        localStorage.setItem(this.storageKey, this.lang);
+        this.apply();
+        if (this.onChange) this.onChange();
+    },
+
+    apply() {
+        document.documentElement.lang = this.lang === 'zh' ? 'zh-CN' : 'en';
+        document.querySelectorAll('[data-i18n]').forEach((el) => {
+            el.textContent = this.t(el.dataset.i18n);
+        });
+        document.querySelectorAll('[data-i18n-title]').forEach((el) => {
+            el.title = this.t(el.dataset.i18nTitle);
+        });
+        document.querySelectorAll('[data-i18n-placeholder]').forEach((el) => {
+            el.placeholder = this.t(el.dataset.i18nPlaceholder);
+        });
+        document.querySelectorAll('#lang-switch .lang-btn').forEach((btn) => {
+            btn.classList.toggle('active', btn.dataset.lang === this.lang);
+        });
+    },
+};

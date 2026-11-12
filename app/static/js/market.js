@@ -28,7 +28,7 @@ const MarketController = {
         if (nextId === this.id) return;
         const dirty = this._isDirty();
         if (dirty) {
-            const ok = window.confirm('切换市场会平掉当前可卖持仓，并清空图上的回放。两个市场的资金分开。战绩入库在后续阶段。继续？');
+            const ok = window.confirm(I18n.t('switch.confirm'));
             if (!ok) return;
         }
         if (typeof TradingEngine !== 'undefined' && TradingEngine.positions.length) {
@@ -44,7 +44,7 @@ const MarketController = {
         TradingEngine.activateMarket(nextId);
         this.applyChrome({ selectTab: true });
         if (this.onAfterSwitch) this.onAfterSwitch();
-        this.notify(nextId === 'ashare' ? '已切换到 A股规则' : '已切换到加密货币规则', 'success');
+        this.notify(I18n.t(nextId === 'ashare' ? 'switch.ashare' : 'switch.crypto'), 'success');
     },
 
     _isDirty() {
@@ -62,9 +62,7 @@ const MarketController = {
         });
         const note = document.getElementById('market-rule-note');
         if (note) {
-            note.textContent = this.id === 'ashare'
-                ? '当前规则：A股 · 只做多 · 1手=100股 · T+1 · 模拟佣金/印花税 · 杠杆不可用'
-                : '当前规则：加密货币 · 可多空 · 杠杆';
+            note.textContent = I18n.t(this.id === 'ashare' ? 'rule.ashare' : 'rule.crypto');
         }
         const buy = document.getElementById('side-buy');
         const sell = document.getElementById('side-sell');
@@ -72,23 +70,23 @@ const MarketController = {
         const lots = document.getElementById('trade-lots');
         const lotsLabel = document.getElementById('trade-size-label');
         if (this.id === 'ashare') {
-            if (buy) buy.textContent = '买入';
-            if (sell) sell.textContent = '卖出';
+            if (buy) buy.textContent = I18n.t('trade.buy');
+            if (sell) sell.textContent = I18n.t('trade.sell');
             if (lots) { lots.step = '1'; lots.min = '1'; if (Number(lots.value) < 1) lots.value = '1'; }
-            if (lotsLabel) lotsLabel.textContent = '手数';
+            if (lotsLabel) lotsLabel.textContent = I18n.t('trade.lots');
             if (selectTab) this._showDataTab('ashare');
         } else {
-            if (buy) buy.textContent = 'Buy / Long';
-            if (sell) sell.textContent = 'Sell / Short';
+            if (buy) buy.textContent = I18n.t('trade.buyLong');
+            if (sell) sell.textContent = I18n.t('trade.sellShort');
             if (lots) { lots.step = '0.01'; lots.min = '0.01'; }
-            if (lotsLabel) lotsLabel.textContent = 'Size';
+            if (lotsLabel) lotsLabel.textContent = I18n.t('trade.size');
             if (selectTab) this._showDataTab('crypto');
         }
         if (place && buy && sell) {
             const side = document.querySelector('.tt-tab.active')?.dataset.side || 'buy';
             place.textContent = this.id === 'ashare'
-                ? (side === 'buy' ? '买入' : '卖出')
-                : (side === 'buy' ? 'Place Buy' : 'Place Sell');
+                ? I18n.t(side === 'buy' ? 'trade.placeBuy' : 'trade.placeSell')
+                : I18n.t(side === 'buy' ? 'trade.placeBuy' : 'trade.placeSell');
         }
         const lev = document.getElementById('trade-leverage');
         if (lev) {

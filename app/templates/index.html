@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-CN">
 
 <head>
   <meta charset="UTF-8">
@@ -23,16 +23,16 @@
         <span>LocalBarReplay</span>
       </div>
       <div id="market-switch" class="market-switch" role="group" aria-label="市场">
-        <button type="button" class="market-btn active" data-market="crypto">加密货币</button>
-        <button type="button" class="market-btn" data-market="ashare">A股</button>
+        <button type="button" class="market-btn active" data-market="crypto" data-i18n="market.crypto">加密货币</button>
+        <button type="button" class="market-btn" data-market="ashare" data-i18n="market.ashare">A股</button>
       </div>
-      <input id="lbr-user" class="user-input" type="text" value="local" maxlength="32" title="用户名，交易记录按此写入数据库">
-      <span id="server-status" class="server-status">未连接 Flask</span>
+      <input id="lbr-user" class="user-input" type="text" value="local" maxlength="32" data-i18n-title="user.title" title="用户名，交易记录按此写入数据库">
+      <span id="server-status" class="server-status" data-i18n="server.offline">未连接 Flask</span>
       <div id="tabs" class="tab-group">
-        <button class="tab active" data-tab="crypto" id="tab-btn-crypto">Crypto</button>
-        <button class="tab" data-tab="forex" id="tab-btn-forex">Forex</button>
-        <button class="tab" data-tab="ashare" id="tab-btn-ashare">A股数据</button>
-        <button class="tab" data-tab="csv" id="tab-btn-csv">Load CSV</button>
+        <button class="tab active" data-tab="crypto" id="tab-btn-crypto" data-i18n="tab.crypto">Crypto</button>
+        <button class="tab" data-tab="forex" id="tab-btn-forex" data-i18n="tab.forex">Forex</button>
+        <button class="tab" data-tab="ashare" id="tab-btn-ashare" data-i18n="tab.ashare">A股数据</button>
+        <button class="tab" data-tab="csv" id="tab-btn-csv" data-i18n="tab.csv">Load CSV</button>
       </div>
     </div>
 
@@ -40,26 +40,26 @@
       <select id="crypto-symbol">
         <option value="BTCUSDT">BTCUSDT</option>
         <option value="ETHUSDT">ETHUSDT</option>
-        <option value="__custom__">Any Crypto…</option>
+        <option value="__custom__" data-i18n="opt.anyCrypto">Any Crypto…</option>
       </select>
       <input id="crypto-custom" type="text" placeholder="e.g. SOLUSDT" class="hidden" spellcheck="false">
       <input id="crypto-date" type="date" title="Start replay from">
-      <button id="btn-fetch-binance" class="btn-primary">Fetch from Binance</button>
+      <button id="btn-fetch-binance" class="btn-primary" data-i18n="btn.fetchBinance">Fetch from Binance</button>
       <button id="btn-download-csv" class="btn-secondary hidden" title="Download fetched data as CSV">⬇ CSV</button>
-      <button id="btn-clear-cache" class="btn-secondary" title="Delete all cached historical data">Clear Cache</button>
+      <button id="btn-clear-cache" class="btn-secondary" data-i18n="btn.clearCache">Clear Cache</button>
     </div>
 
     <div id="tab-ashare" class="tab-content">
       <input id="ashare-code" type="text" placeholder="600519" spellcheck="false" maxlength="6">
       <input id="ashare-date" type="date" title="Start replay from">
       <select id="ashare-adjust" title="复权方式">
-        <option value="qfq">前复权</option>
-        <option value="none">不复权</option>
-        <option value="hfq">后复权</option>
+        <option value="qfq" data-i18n="opt.qfq">前复权</option>
+        <option value="none" data-i18n="opt.none">不复权</option>
+        <option value="hfq" data-i18n="opt.hfq">后复权</option>
       </select>
-      <button id="btn-fetch-ashare" class="btn-primary" type="button">获取日线</button>
-      <label class="ashare-note"><input id="ashare-refresh" type="checkbox"> 强制更新</label>
-      <span class="ashare-note">通过 Flask 读取并写入数据库。未启动服务时不能拉 A 股。</span>
+      <button id="btn-fetch-ashare" class="btn-primary" type="button" data-i18n="btn.fetchAshare">获取日线</button>
+      <label class="ashare-note"><input id="ashare-refresh" type="checkbox"> <span data-i18n="note.refresh">强制更新</span></label>
+      <span class="ashare-note" data-i18n="note.ashare">通过 Flask 读取并写入数据库。未启动服务时不能拉 A 股。</span>
     </div>
 
     <div id="tab-forex" class="tab-content">
@@ -78,19 +78,19 @@
         <option>EURAUD</option>
       </select>
       <input id="forex-date" type="date" title="Start replay from">
-      <button id="btn-fetch-mt5" class="btn-primary">Fetch from MT5</button>
+      <button id="btn-fetch-mt5" class="btn-primary" data-i18n="btn.fetchMt5">Fetch from MT5</button>
     </div>
 
     <div id="tab-csv" class="tab-content">
       <label class="file-label">
         <input id="csv-file" type="file" accept=".csv,.txt">
-        <span>Choose CSV file…</span>
+        <span data-i18n="csv.choose">Choose CSV file…</span>
       </label>
     </div>
 
     <!-- Indicator Menu -->
     <div class="ind-menu-wrap">
-      <button id="btn-indicators" class="btn-secondary">📊 Indicators</button>
+      <button id="btn-indicators" class="btn-secondary" data-i18n="btn.indicators">📊 Indicators</button>
       <div id="ind-dropdown" class="ind-dropdown hidden">
         <div class="ind-group">
           <label class="ind-toggle"><input type="checkbox" data-ind="sma" checked> <b>SMA</b></label>
@@ -159,9 +159,13 @@
         </div>
 
         <div class="ind-footer">
-          <button id="ind-apply" class="btn-primary" style="width:100%">Apply Changes</button>
+          <button id="ind-apply" class="btn-primary" style="width:100%" data-i18n="btn.apply">Apply Changes</button>
         </div>
       </div>
+    </div>
+    <div id="lang-switch" class="lang-switch" role="group" aria-label="Language">
+      <button type="button" class="lang-btn" data-lang="zh">中文</button>
+      <button type="button" class="lang-btn" data-lang="en">EN</button>
     </div>
   </header>
 
@@ -180,24 +184,24 @@
     <!-- Trading Panel -->
     <aside id="trading-panel">
       <div class="trade-section">
-        <h4>Trade</h4>
+        <h4 data-i18n="trade.title">Trade</h4>
         <p id="market-rule-note" class="market-rule-note">当前规则：加密货币 · 可多空 · 杠杆</p>
         <div class="trade-type-tabs">
-          <button class="tt-tab active" data-side="buy" id="side-buy">Buy / Long</button>
-          <button class="tt-tab" data-side="sell" id="side-sell">Sell / Short</button>
+          <button class="tt-tab active" data-side="buy" id="side-buy" data-i18n="trade.buyLong">Buy / Long</button>
+          <button class="tt-tab" data-side="sell" id="side-sell" data-i18n="trade.sellShort">Sell / Short</button>
         </div>
         <div class="trade-field">
-          <label id="trade-size-label">Size</label>
+          <label id="trade-size-label" data-i18n="trade.size">Size</label>
           <div class="size-row">
             <input id="trade-lots" type="number" step="0.01" min="0.01" value="0.1" placeholder="Lots">
-            <span class="size-or crypto-size-extra">or</span>
+            <span class="size-or crypto-size-extra" data-i18n="trade.or">or</span>
             <input id="trade-usdt" class="crypto-size-extra" type="number" step="1" min="1" placeholder="USDT $"
               title="USDT amount — lots auto-calculated">
           </div>
           <div id="trade-value-preview" class="trade-value-preview"></div>
         </div>
         <div class="trade-field leverage-field">
-          <label>Leverage</label>
+          <label data-i18n="trade.leverage">Leverage</label>
           <select id="trade-leverage">
             <option value="1">1×</option>
             <option value="2">2×</option>
@@ -210,57 +214,57 @@
           </select>
         </div>
         <div class="trade-field">
-          <label>Take Profit</label>
+          <label data-i18n="trade.tp">Take Profit</label>
           <div class="pick-row">
             <input id="trade-tp" type="number" step="any" placeholder="TP price">
             <button id="btn-pick-tp" class="pick-btn" title="Click on chart to set TP">🎯</button>
           </div>
         </div>
         <div class="trade-field">
-          <label>Stop Loss</label>
+          <label data-i18n="trade.sl">Stop Loss</label>
           <div class="pick-row">
             <input id="trade-sl" type="number" step="any" placeholder="SL price">
             <button id="btn-pick-sl" class="pick-btn" title="Click on chart to set SL">🎯</button>
           </div>
         </div>
         <div class="trade-actions">
-          <button id="btn-place-trade" class="btn-trade-buy">Place Buy</button>
-          <button id="btn-close-all" class="btn-secondary">Close All</button>
+          <button id="btn-place-trade" class="btn-trade-buy" data-i18n="trade.placeBuy">Place Buy</button>
+          <button id="btn-close-all" class="btn-secondary" data-i18n="trade.closeAll">Close All</button>
         </div>
       </div>
 
       <div class="trade-section">
-        <h4>Open Positions</h4>
+        <h4 data-i18n="pos.open">Open Positions</h4>
         <div id="open-positions" class="positions-list">
           <div class="empty-state">No open positions</div>
         </div>
       </div>
 
       <div id="account-info" class="trade-section account-section">
-        <h4>Account</h4>
+        <h4 data-i18n="acct.title">Account</h4>
         <div class="account-grid">
-          <div class="acct-item"><span class="acct-label">Balance</span><span id="acct-balance"
+          <div class="acct-item"><span class="acct-label" data-i18n="acct.balance">Balance</span><span id="acct-balance"
               class="acct-value">$10,000.00</span></div>
-          <div class="acct-item"><span class="acct-label">Equity</span><span id="acct-equity"
+          <div class="acct-item"><span class="acct-label" data-i18n="acct.equity">Equity</span><span id="acct-equity"
               class="acct-value">$10,000.00</span></div>
-          <div class="acct-item"><span class="acct-label">P&L</span><span id="acct-pnl" class="acct-value">$0.00</span>
+          <div class="acct-item"><span class="acct-label" data-i18n="acct.pnl">P&L</span><span id="acct-pnl" class="acct-value">$0.00</span>
           </div>
-          <div class="acct-item"><span class="acct-label">Trades</span><span id="acct-trades"
+          <div class="acct-item"><span class="acct-label" data-i18n="acct.trades">Trades</span><span id="acct-trades"
               class="acct-value">0</span></div>
-          <div class="acct-item"><span class="acct-label">Win%</span><span id="acct-winrate" class="acct-value">—</span>
+          <div class="acct-item"><span class="acct-label" data-i18n="acct.win">Win%</span><span id="acct-winrate" class="acct-value">—</span>
           </div>
         </div>
       </div>
 
       <div class="trade-section" id="records-section">
         <div class="history-header">
-          <h4>战绩</h4>
-          <button id="btn-refresh-records" class="btn-detail" type="button">刷新</button>
+          <h4 data-i18n="rec.title">战绩</h4>
+          <button id="btn-refresh-records" class="btn-detail" type="button" data-i18n="rec.refresh">刷新</button>
         </div>
         <div class="record-filters">
-          <button type="button" class="record-filter active" data-market="all">全部</button>
-          <button type="button" class="record-filter" data-market="ashare">A股</button>
-          <button type="button" class="record-filter" data-market="crypto">加密</button>
+          <button type="button" class="record-filter active" data-market="all" data-i18n="rec.all">全部</button>
+          <button type="button" class="record-filter" data-market="ashare" data-i18n="rec.ashare">A股</button>
+          <button type="button" class="record-filter" data-market="crypto" data-i18n="rec.crypto">加密</button>
         </div>
         <div id="record-summary" class="record-summary">未连接数据库</div>
         <div id="record-sessions" class="positions-list"></div>
@@ -268,8 +272,8 @@
 
       <div class="trade-section history-section">
         <div class="history-header">
-          <h4>History</h4>
-          <button id="btn-export-history" class="btn-detail" title="Download all trades as JSON">⬇ Export</button>
+          <h4 data-i18n="hist.title">History</h4>
+          <button id="btn-export-history" class="btn-detail" data-i18n="hist.export">⬇ Export</button>
         </div>
         <div id="trade-history" class="positions-list">
           <div class="empty-state">No closed trades</div>
@@ -281,15 +285,15 @@
   <!-- ═══ REPLAY BAR ═══ -->
   <footer id="replay-bar">
     <div class="replay-controls">
-      <button id="btn-to-start" title="Go to start (Home)" class="ctrl-btn">⏮</button>
-      <button id="btn-step-back" title="Step back (←)" class="ctrl-btn">◀</button>
-      <button id="btn-play" title="Play / Pause (Space)" class="ctrl-btn play-btn">▶</button>
-      <button id="btn-step-fwd" title="Step forward (→)" class="ctrl-btn">▶</button>
-      <button id="btn-to-end" title="Go to end (End)" class="ctrl-btn">⏭</button>
+      <button id="btn-to-start" data-i18n-title="title.start" title="Go to start (Home)" class="ctrl-btn">⏮</button>
+      <button id="btn-step-back" data-i18n-title="title.back" title="Step back" class="ctrl-btn">◀</button>
+      <button id="btn-play" data-i18n-title="title.play" title="Play / Pause" class="ctrl-btn play-btn">▶</button>
+      <button id="btn-step-fwd" data-i18n-title="title.fwd" title="Step forward" class="ctrl-btn">▶</button>
+      <button id="btn-to-end" data-i18n-title="title.end" title="Go to end" class="ctrl-btn">⏭</button>
     </div>
     <button id="btn-open-only" class="ctrl-btn" title="Open Only — show candle open price only (toggle)">O</button>
     <div class="tf-control">
-      <span class="label">TF</span>
+      <span class="label" data-i18n="tf.label">TF</span>
       <select id="timeframe">
         <option value="5">5m</option>
         <option value="15">15m</option>
@@ -299,12 +303,12 @@
         <option value="240">4h</option>
         <option value="360">6h</option>
         <option value="720">12h</option>
-        <option value="1440">1D</option>
-        <option value="10080">1W</option>
+        <option value="1440" data-i18n="opt.day">1D</option>
+        <option value="10080" data-i18n="opt.week">1W</option>
       </select>
     </div>
     <div class="speed-control">
-      <span class="label">Speed</span>
+      <span class="label" data-i18n="speed.label">Speed</span>
       <input id="speed-slider" type="range" min="0.1" max="20" step="0.1" value="1">
       <span id="speed-label">1×</span>
     </div>
@@ -368,6 +372,7 @@ plot(mySlow, title=&quot;Slow SMA&quot;, color=aqua)"></textarea>
   <script src="/static/js/indicators.js"></script>
   <script src="/static/js/pinescript.js"></script>
   <script src="/static/js/chart.js"></script>
+  <script src="/static/js/i18n.js"></script>
   <script src="/static/js/rules/crypto.js"></script>
   <script src="/static/js/rules/ashare.js"></script>
   <script src="/static/js/trading.js"></script>

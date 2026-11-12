@@ -29,7 +29,7 @@ const Companion = {
     _paintStatus() {
         const el = document.getElementById('server-status');
         if (!el) return;
-        el.textContent = this.online ? '数据库已连接' : '未连接 Flask';
+        el.textContent = I18n.t(this.online ? 'server.online' : 'server.offline');
         el.classList.toggle('online', this.online);
     },
 

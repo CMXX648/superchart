@@ -85,15 +85,15 @@ const TradingEngine = {
     closeForSwitch() {
         if (!this.positions.length) return '';
         const price = (typeof ReplayEngine !== 'undefined') ? ReplayEngine.getCurrentPrice() : 0;
-        if (!price) return '没有当前价格，不能平仓，因此不能切换市场';
+        if (!price) return I18n.t('err.noPrice');
         if (this.assetType === 'ashare') {
             const bar = AshareRules.currentBar();
             if (this.positions.some((pos) => !AshareRules.canSell(pos, bar))) {
-                return 'T+1 未满足，不能卖出，因此不能切换市场';
+                return I18n.t('err.t1switch');
             }
         }
         this.closeAll(price);
-        if (this.positions.length) return this.lastReject || '仍有未平仓位，不能切换市场';
+        if (this.positions.length) return this.lastReject || I18n.t('err.stillOpen');
         return '';
     },
 
@@ -149,7 +149,7 @@ const TradingEngine = {
             if (!pos) return;
             const bar = AshareRules.currentBar();
             if (!AshareRules.canSell(pos, bar)) {
-                this.lastReject = 'T+1，当日买入不能卖出';
+                this.lastReject = I18n.t('err.t1sell');
                 return;
             }
             this.lastReject = '';
@@ -232,7 +232,7 @@ const TradingEngine = {
                 if (!AshareRules.canSell(pos, bar)) { blocked += 1; continue; }
                 this._realizeAshare(pos, pos.shares, price);
             }
-            this.lastReject = blocked ? 'T+1，部分持仓当日不能卖出' : '';
+            this.lastReject = blocked ? I18n.t('err.t1partial') : '';
             this.updateUI();
             return;
         }
@@ -266,7 +266,7 @@ const TradingEngine = {
                     continue;
                 }
                 if (!dayOk && ((pos.tp !== null && candle.high >= pos.tp) || (pos.sl !== null && candle.low <= pos.sl))) {
-                    this.lastReject = 'T+1，止损/止盈未执行';
+                    this.lastReject = I18n.t('err.t1tpsl');
                 }
                 continue;
             }
@@ -367,7 +367,7 @@ const TradingEngine = {
     renderPositions() {
         const container = document.getElementById('open-positions');
         if (!container) return;
-        if (!this.positions.length) { container.innerHTML = '<div class="empty-state">No open positions</div>'; return; }
+        if (!this.positions.length) { container.innerHTML = '<div class="empty-state">' + I18n.t('empty.positions') + '</div>'; return; }
         if (this.assetType === 'ashare') { this._renderAsharePositions(container); return; }
         const fmt = (v) => '$' + v.toFixed(2);
         const prec = (p) => p > 10 ? 2 : 5;
@@ -390,7 +390,7 @@ const TradingEngine = {
     renderHistory() {
         const container = document.getElementById('trade-history');
         if (!container) return;
-        if (!this.history.length) { container.innerHTML = '<div class="empty-state">No closed trades</div>'; return; }
+        if (!this.history.length) { container.innerHTML = '<div class="empty-state">' + I18n.t('empty.history') + '</div>'; return; }
         if (this.assetType === 'ashare') { this._renderAshareHistory(container); return; }
         const fmt = (v) => (v >= 0 ? '+' : '') + '$' + v.toFixed(2);
         const recent = this.history.slice(-50).reverse();

@@ -25,7 +25,7 @@ KLinePlayground/       只复用行情代码，不提交
 
 ## 进度
 
-已有：市场开关和规则分叉；Flask 托管与 `/static`；SQLite 的 `candles`、`users`、`sessions`、`trades`；A 股日线接口与缓存；日线基准周期不再被当成 5 分钟；侧栏战绩可按全部/A股/加密过滤。
+已有：市场开关和规则分叉；Flask 托管与 `/static`；SQLite 的 `candles`、`users`、`sessions`、`trades`；A 股日线接口与缓存；日线基准周期不再被当成 5 分钟；侧栏战绩可按全部/A股/加密过滤；界面语言记在 localStorage（lbr_lang）。
 
 未验证：A 股的佣金、T+1、印花税还没有用真实行情验收。
 

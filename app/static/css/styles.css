@@ -1706,3 +1706,24 @@ body.market-crypto #tab-ashare {
 .record-filter.active { background: var(--accent); color: #fff; }
 .record-summary { font-size: 11px; color: var(--text-dim); line-height: 1.45; margin-bottom: 6px; }
 .record-row { font-size: 11px; padding: 4px 0; border-bottom: 1px solid var(--border); }
+
+.lang-switch {
+  margin-left: auto;
+  display: flex;
+  gap: 2px;
+  background: var(--bg-input);
+  border-radius: 6px;
+  padding: 2px;
+}
+.lang-btn {
+  border: none;
+  background: transparent;
+  color: var(--text-dim);
+  font-family: var(--font);
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: 5px;
+  padding: 5px 10px;
+  cursor: pointer;
+}
+.lang-btn.active { background: var(--accent); color: #fff; }

@@ -360,7 +360,7 @@
             if (!price || hands <= 0) { tradeValuePreview.textContent = ''; return; }
             const amount = hands * AshareRules.lotSize * price;
             const fee = AshareRules.commission(amount);
-            tradeValuePreview.textContent = `${hands}手 = ${hands * AshareRules.lotSize}股，成交额 ¥${amount.toLocaleString(undefined, {maximumFractionDigits: 2})}，模拟佣金 ¥${fee.toFixed(2)}`;
+            tradeValuePreview.textContent = I18n.t('preview.ashare', { hands: hands, shares: hands * AshareRules.lotSize, amount: amount.toLocaleString(undefined, {maximumFractionDigits: 2}), fee: fee.toFixed(2) });
             return;
         }
         const lev = parseInt(tradeLeverage.value) || 10;
@@ -535,19 +535,17 @@
         const worst = returns.length ? Math.min(...returns) : null;
         const pct = (n) => n === null ? '—' : (n >= 0 ? '+' : '') + n.toFixed(2) + '%';
         const winRate = shownTrades.length ? Math.round(wins / shownTrades.length * 100) + '%' : '—';
-        summary.textContent = '局数 ' + shownSessions.length
-            + ' · 均收益 ' + pct(avg)
-            + ' · 最佳 ' + pct(best)
-            + ' · 最差 ' + pct(worst)
-            + ' · 交易胜率 ' + winRate;
+        summary.textContent = I18n.t('rec.line', {
+            n: shownSessions.length, avg: pct(avg), best: pct(best), worst: pct(worst), win: winRate,
+        });
         if (!shownSessions.length) {
-            list.innerHTML = '<div class="empty-state">暂无已保存回合</div>';
+            list.innerHTML = '<div class="empty-state">' + I18n.t('rec.empty') + '</div>';
             return;
         }
         list.innerHTML = shownSessions.slice(0, 12).map(s => {
             const ret = Number(s.total_return);
             const label = Number.isFinite(ret) ? ((ret >= 0 ? '+' : '') + ret.toFixed(2) + '%') : '—';
-            return '<div class="record-row">' + (s.market === 'ashare' ? 'A股' : '加密')
+            return '<div class="record-row">' + I18n.t(s.market === 'ashare' ? 'rec.ashare' : 'rec.crypto')
                 + ' ' + (s.symbol || '—') + ' ' + label
                 + ' · ' + (s.trade_count || 0) + '笔</div>';
         }).join('');
@@ -556,14 +554,14 @@
     async function refreshRecords() {
         const summary = document.getElementById('record-summary');
         if (!Companion.online) {
-            if (summary) summary.textContent = '未连接数据库';
+            if (summary) summary.textContent = I18n.t('rec.offline');
             return;
         }
         try {
             const [sessions, trades] = await Promise.all([Companion.listSessions(), Companion.listTrades()]);
             renderRecords(sessions, trades);
         } catch (err) {
-            if (summary) summary.textContent = '战绩读取失败';
+            if (summary) summary.textContent = I18n.t('rec.fail');
         }
     }
 
@@ -597,6 +595,12 @@
             if (ChartManager.clearAll) ChartManager.clearAll();
             btnDownload.classList.add('hidden');
         };
+        I18n.init();
+        I18n.onChange = () => {
+            MarketController.applyChrome();
+            TradingEngine.updateUI();
+            refreshRecords();
+        };
         MarketController.init();
         if (typeof Companion !== 'undefined') {
             Companion.init().then(refreshRecords);
@@ -617,19 +621,19 @@
             btnFetchAshare.addEventListener('click', async () => {
                 if (!Companion.online) await Companion.init();
                 if (!Companion.online) {
-                    showStatus('请先运行 python run.py，再用 http://127.0.0.1:8765 打开。', 'error');
+                    showStatus(I18n.t('fetch.needServer'), 'error');
                     return;
                 }
                 const code = (document.getElementById('ashare-code').value || '').trim();
                 const start = document.getElementById('ashare-date').value;
                 const adjust = document.getElementById('ashare-adjust').value || 'qfq';
                 const refresh = document.getElementById('ashare-refresh').checked;
-                if (!/^\d{6}$/.test(code)) { showStatus('请输入 6 位股票代码', 'error'); return; }
+                if (!/^\d{6}$/.test(code)) { showStatus(I18n.t('fetch.badCode'), 'error'); return; }
                 btnFetchAshare.disabled = true;
                 try {
-                    showStatus('正在读取 ' + code + ' ...');
+                    showStatus(I18n.t('fetch.loading', { code: code }));
                     const data = await Companion.fetchAshare(code, start, adjust, refresh);
-                    if (!data.candles || !data.candles.length) throw new Error('没有可回放的日线');
+                    if (!data.candles || !data.candles.length) throw new Error(I18n.t('fetch.empty'));
                     currentSymbol = code;
                     TradingEngine.setAssetType('ashare');
                     TradingEngine.reset();
@@ -639,8 +643,8 @@
                         market: 'ashare', symbol: code, interval: '1d', adjust: adjust,
                         baseMinutes: 1440, saveCandles: false,
                     });
-                    const where = data.from_cache ? '数据库' : (data.source || '行情源');
-                    showStatus('已加载 ' + data.candles.length + ' 根日线（' + where + '）', 'success');
+                    const where = data.from_cache ? I18n.t('fetch.db') : (data.source || I18n.t('fetch.source'));
+                    showStatus(I18n.t('fetch.loaded', { count: data.candles.length, where: where }), 'success');
                 } catch (err) {
                     showStatus(err.message || String(err), 'error');
                 }

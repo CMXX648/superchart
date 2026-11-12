@@ -45,27 +45,27 @@ const AshareRules = {
     canOpen(order, engine) {
         const lots = Number(order.lots);
         if (!Number.isInteger(lots) || lots <= 0) {
-            return { ok: false, reason: 'A股数量必须是整数手（1手=100股）' };
+            return { ok: false, reason: I18n.t('ashare.lot') };
         }
         const bar = order.bar || this.currentBar();
         if (order.side === 'sell') {
             const available = this.availableShares(engine.positions, bar);
             const want = lots * this.lotSize;
             if (available <= 0) {
-                return { ok: false, reason: 'A股不能开空；没有可卖数量（当日买入受 T+1 限制）' };
+                return { ok: false, reason: I18n.t('ashare.noShort') };
             }
             if (want > available) {
-                return { ok: false, reason: `可卖 ${available / this.lotSize} 手，不能卖出 ${lots} 手` };
+                return { ok: false, reason: I18n.t('ashare.sellLimit', { have: available / this.lotSize, want: lots }) };
             }
             return { ok: true, action: 'close', shares: want, bar };
         }
         const price = Number(order.price);
-        if (!(price > 0)) return { ok: false, reason: '没有可用价格' };
+        if (!(price > 0)) return { ok: false, reason: I18n.t('ashare.noPrice') };
         const shares = lots * this.lotSize;
         const amount = shares * price;
         const fee = this.commission(amount);
         if (engine.balance < amount + fee) {
-            return { ok: false, reason: '可用资金不足（含模拟佣金）' };
+            return { ok: false, reason: I18n.t('ashare.noCash') };
         }
         return { ok: true, action: 'open', shares, amount, fee, bar };
     },

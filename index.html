@@ -12,7 +12,7 @@
   <link rel="stylesheet" href="css/styles.css">
 </head>
 
-<body>
+<body class="market-crypto">
   <!-- ═══ TOP BAR ═══ -->
   <header id="asset-panel">
     <div class="panel-left">
@@ -22,10 +22,15 @@
         </svg>
         <span>LocalBarReplay</span>
       </div>
+      <div id="market-switch" class="market-switch" role="group" aria-label="市场">
+        <button type="button" class="market-btn active" data-market="crypto">加密货币</button>
+        <button type="button" class="market-btn" data-market="ashare">A股</button>
+      </div>
       <div id="tabs" class="tab-group">
-        <button class="tab active" data-tab="crypto">Crypto</button>
-        <button class="tab" data-tab="forex">Forex</button>
-        <button class="tab" data-tab="csv">Load CSV</button>
+        <button class="tab active" data-tab="crypto" id="tab-btn-crypto">Crypto</button>
+        <button class="tab" data-tab="forex" id="tab-btn-forex">Forex</button>
+        <button class="tab" data-tab="ashare" id="tab-btn-ashare">A股数据</button>
+        <button class="tab" data-tab="csv" id="tab-btn-csv">Load CSV</button>
       </div>
     </div>
 
@@ -40,6 +45,18 @@
       <button id="btn-fetch-binance" class="btn-primary">Fetch from Binance</button>
       <button id="btn-download-csv" class="btn-secondary hidden" title="Download fetched data as CSV">⬇ CSV</button>
       <button id="btn-clear-cache" class="btn-secondary" title="Delete all cached historical data">Clear Cache</button>
+    </div>
+
+    <div id="tab-ashare" class="tab-content">
+      <input id="ashare-code" type="text" placeholder="600519" spellcheck="false" maxlength="6">
+      <input id="ashare-date" type="date" title="Start replay from">
+      <select id="ashare-adjust" title="复权方式">
+        <option value="qfq">前复权</option>
+        <option value="none">不复权</option>
+        <option value="hfq">后复权</option>
+      </select>
+      <button id="btn-fetch-ashare" class="btn-primary" type="button">获取日线</button>
+      <span class="ashare-note">行情服务下一阶段接入。当前只切换交易规则，不会拉取 A 股数据。</span>
     </div>
 
     <div id="tab-forex" class="tab-content">
@@ -161,21 +178,22 @@
     <aside id="trading-panel">
       <div class="trade-section">
         <h4>Trade</h4>
+        <p id="market-rule-note" class="market-rule-note">当前规则：加密货币 · 可多空 · 杠杆</p>
         <div class="trade-type-tabs">
-          <button class="tt-tab active" data-side="buy">Buy / Long</button>
-          <button class="tt-tab" data-side="sell">Sell / Short</button>
+          <button class="tt-tab active" data-side="buy" id="side-buy">Buy / Long</button>
+          <button class="tt-tab" data-side="sell" id="side-sell">Sell / Short</button>
         </div>
         <div class="trade-field">
-          <label>Size</label>
+          <label id="trade-size-label">Size</label>
           <div class="size-row">
             <input id="trade-lots" type="number" step="0.01" min="0.01" value="0.1" placeholder="Lots">
-            <span class="size-or">or</span>
-            <input id="trade-usdt" type="number" step="1" min="1" placeholder="USDT $"
+            <span class="size-or crypto-size-extra">or</span>
+            <input id="trade-usdt" class="crypto-size-extra" type="number" step="1" min="1" placeholder="USDT $"
               title="USDT amount — lots auto-calculated">
           </div>
           <div id="trade-value-preview" class="trade-value-preview"></div>
         </div>
-        <div class="trade-field">
+        <div class="trade-field leverage-field">
           <label>Leverage</label>
           <select id="trade-leverage">
             <option value="1">1×</option>
@@ -332,7 +350,10 @@ plot(mySlow, title=&quot;Slow SMA&quot;, color=aqua)"></textarea>
   <script src="js/indicators.js"></script>
   <script src="js/pinescript.js"></script>
   <script src="js/chart.js"></script>
+  <script src="js/rules/crypto.js"></script>
+  <script src="js/rules/ashare.js"></script>
   <script src="js/trading.js"></script>
+  <script src="js/market.js"></script>
   <script src="js/tradeaddons.js"></script>
   <script src="js/replay.js"></script>
   <script src="js/bridge.js"></script>

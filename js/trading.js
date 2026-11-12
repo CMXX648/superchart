@@ -14,6 +14,10 @@ const TradingEngine = {
         GBPJPY: 1000 / 110, EURGBP: 10 * 1.27, AUDJPY: 1000 / 110, EURAUD: 10 / 0.65,
     },
 
+    marketId: 'crypto',
+    _buckets: null,
+    lastReject: '',
+
     setAssetType(type) { this.assetType = type; },
 
     reset() {
@@ -21,7 +25,76 @@ const TradingEngine = {
         this.positions = [];
         this.history = [];
         this.nextId = 1;
+        this.lastReject = '';
         this.updateUI();
+        this._storeCurrentBucket();
+    },
+
+    _emptyBucket(id) {
+        const capital = id === 'ashare' ? AshareRules.defaultCapital : 10000;
+        return { balance: capital, startingBalance: capital, positions: [], history: [], nextId: 1 };
+    },
+
+    _snapshotBucket() {
+        return {
+            balance: this.balance,
+            startingBalance: this.startingBalance,
+            positions: this.positions,
+            history: this.history,
+            nextId: this.nextId,
+        };
+    },
+
+    _loadBucket(bucket) {
+        this.balance = bucket.balance;
+        this.startingBalance = bucket.startingBalance;
+        this.positions = bucket.positions;
+        this.history = bucket.history;
+        this.nextId = bucket.nextId;
+    },
+
+    ensureBuckets() {
+        if (this._buckets) return;
+        this._buckets = {
+            crypto: this._snapshotBucket(),
+            ashare: this._emptyBucket('ashare'),
+        };
+    },
+
+    _storeCurrentBucket() {
+        if (!this._buckets) return;
+        const key = this.marketId === 'ashare' ? 'ashare' : 'crypto';
+        this._buckets[key] = this._snapshotBucket();
+    },
+
+    activateMarket(id) {
+        const next = id === 'ashare' ? 'ashare' : 'crypto';
+        this.ensureBuckets();
+        const current = this.marketId === 'ashare' ? 'ashare' : 'crypto';
+        if (current !== next) {
+            this._buckets[current] = this._snapshotBucket();
+            this._loadBucket(this._buckets[next]);
+        }
+        this.marketId = next;
+        if (next === 'ashare') this.assetType = 'ashare';
+        else if (this.assetType === 'ashare') this.assetType = 'crypto';
+        this.lastReject = '';
+        this.updateUI();
+    },
+
+    closeForSwitch() {
+        if (!this.positions.length) return '';
+        const price = (typeof ReplayEngine !== 'undefined') ? ReplayEngine.getCurrentPrice() : 0;
+        if (!price) return '没有当前价格，不能平仓，因此不能切换市场';
+        if (this.assetType === 'ashare') {
+            const bar = AshareRules.currentBar();
+            if (this.positions.some((pos) => !AshareRules.canSell(pos, bar))) {
+                return 'T+1 未满足，不能卖出，因此不能切换市场';
+            }
+        }
+        this.closeAll(price);
+        if (this.positions.length) return this.lastReject || '仍有未平仓位，不能切换市场';
+        return '';
     },
 
     // ═══════════════════════════════════════════════════════
@@ -29,6 +102,10 @@ const TradingEngine = {
     // ═══════════════════════════════════════════════════════
 
     openPosition(side, lots, leverage, entryPrice, tp, sl, symbol) {
+        this.lastReject = '';
+        if (this.assetType === 'ashare') {
+            return this._openAshare(side, lots, leverage, entryPrice, tp, sl, symbol);
+        }
         const candles = ChartManager._lastCandles || [];
 
         // Check if any addon wants to block this trade
@@ -67,6 +144,19 @@ const TradingEngine = {
     },
 
     closePosition(id, exitPrice) {
+        if (this.assetType === 'ashare') {
+            const pos = this.positions.find(p => p.id === id);
+            if (!pos) return;
+            const bar = AshareRules.currentBar();
+            if (!AshareRules.canSell(pos, bar)) {
+                this.lastReject = 'T+1，当日买入不能卖出';
+                return;
+            }
+            this.lastReject = '';
+            this._realizeAshare(pos, pos.shares, exitPrice);
+            this.updateUI();
+            return;
+        }
         const idx = this.positions.findIndex(p => p.id === id);
         if (idx === -1) return;
         const pos = this.positions[idx];
@@ -124,13 +214,26 @@ const TradingEngine = {
             const pips = priceDiff / pipSize;
             const pipVal = (this.pipValues[symbol] || 10) * pos.lots;
             return pips * pipVal;
-        } else {
-            return priceDiff * pos.lots * pos.leverage;
         }
+        if (this.assetType === 'ashare') {
+            return AshareRules.unrealized(pos, currentPrice);
+        }
+        return CryptoRules.calcPnL(pos, currentPrice);
     },
 
     /** Force-close all open positions at the given price. */
     closeAll(price) {
+        if (this.assetType === 'ashare') {
+            const bar = AshareRules.currentBar();
+            let blocked = 0;
+            for (const pos of [...this.positions]) {
+                if (!AshareRules.canSell(pos, bar)) { blocked += 1; continue; }
+                this._realizeAshare(pos, pos.shares, price);
+            }
+            this.lastReject = blocked ? 'T+1，部分持仓当日不能卖出' : '';
+            this.updateUI();
+            return;
+        }
         for (const pos of [...this.positions]) {
             this.closePosition(pos.id, price);
         }
@@ -145,6 +248,24 @@ const TradingEngine = {
             // that fires immediately after opening a position.
             if (pos._justPlaced) {
                 pos._justPlaced = false;
+                continue;
+            }
+
+            if (this.assetType === 'ashare') {
+                const dayOk = AshareRules.canSell(pos, candle);
+                if (dayOk && pos.tp !== null && candle.high >= pos.tp) {
+                    this._realizeAshare(pos, pos.shares, pos.tp);
+                    closed.push(pos.id);
+                    continue;
+                }
+                if (dayOk && pos.sl !== null && candle.low <= pos.sl) {
+                    this._realizeAshare(pos, pos.shares, pos.sl);
+                    closed.push(pos.id);
+                    continue;
+                }
+                if (!dayOk && ((pos.tp !== null && candle.high >= pos.tp) || (pos.sl !== null && candle.low <= pos.sl))) {
+                    this.lastReject = 'T+1，止损/止盈未执行';
+                }
                 continue;
             }
 
@@ -215,9 +336,13 @@ const TradingEngine = {
     // ═══════════════════════════════════════════════════════
 
     updateUI() {
-        const equity = this.balance + this.positions.reduce((s, p) => s + p.pnl, 0);
+        const marked = this.assetType === 'ashare'
+            ? this.positions.reduce((s, p) => s + (p.cost || 0) + p.pnl, 0)
+            : this.positions.reduce((s, p) => s + p.pnl, 0);
+        const equity = this.balance + marked;
         const unrealizedPnl = this.positions.reduce((s, p) => s + p.pnl, 0);
-        const fmt = (v) => '$' + v.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+        const currency = this.assetType === 'ashare' ? '¥' : '$';
+        const fmt = (v) => currency + v.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
         const el = (id) => document.getElementById(id);
 
         const balEl = el('acct-balance'), eqEl = el('acct-equity'), pnlEl = el('acct-pnl');
@@ -241,6 +366,7 @@ const TradingEngine = {
         const container = document.getElementById('open-positions');
         if (!container) return;
         if (!this.positions.length) { container.innerHTML = '<div class="empty-state">No open positions</div>'; return; }
+        if (this.assetType === 'ashare') { this._renderAsharePositions(container); return; }
         const fmt = (v) => '$' + v.toFixed(2);
         const prec = (p) => p > 10 ? 2 : 5;
         container.innerHTML = this.positions.map(p => `
@@ -263,6 +389,7 @@ const TradingEngine = {
         const container = document.getElementById('trade-history');
         if (!container) return;
         if (!this.history.length) { container.innerHTML = '<div class="empty-state">No closed trades</div>'; return; }
+        if (this.assetType === 'ashare') { this._renderAshareHistory(container); return; }
         const fmt = (v) => (v >= 0 ? '+' : '') + '$' + v.toFixed(2);
         const recent = this.history.slice(-50).reverse();
         container.innerHTML = recent.map((h, i) => `
@@ -355,5 +482,150 @@ const TradingEngine = {
         };
 
         modal.classList.remove('hidden');
+    },
+
+    _openAshare(side, lots, leverage, entryPrice, tp, sl, symbol) {
+        const bar = AshareRules.currentBar();
+        const gate = AshareRules.canOpen({ side, lots, price: entryPrice, bar }, this);
+        if (!gate.ok) {
+            this.lastReject = gate.reason;
+            return null;
+        }
+        if (gate.action === 'close') {
+            this._closeAshareShares(gate.shares, entryPrice, gate.bar || bar);
+            this.updateUI();
+            return { ok: true, closed: true };
+        }
+        const candles = ChartManager._lastCandles || [];
+        if (typeof TradeAddonManager !== 'undefined') {
+            const blockResult = TradeAddonManager.onBeforeTrade(candles, entryPrice, { side, lots, leverage: 1, tp, sl, symbol });
+            if (blockResult !== true) {
+                this.lastReject = typeof blockResult === 'string' ? blockResult : 'Trade blocked by addon';
+                return null;
+            }
+        }
+        const pos = {
+            id: this.nextId++,
+            side: 'buy',
+            lots: gate.shares / AshareRules.lotSize,
+            shares: gate.shares,
+            leverage: 1,
+            entryPrice,
+            tp: (tp !== null && tp !== undefined && !isNaN(tp)) ? tp : null,
+            sl: (sl !== null && sl !== undefined && !isNaN(sl)) ? sl : null,
+            symbol: symbol || '',
+            market: 'ashare',
+            openTime: Date.now(),
+            openDate: AshareRules.tradeDate(gate.bar || bar),
+            openReplayIndex: ReplayEngine.replayIndex,
+            _openBaseIdx: ReplayEngine._subMode ? ReplayEngine._baseIdx : -1,
+            _justPlaced: true,
+            pnl: 0,
+            cost: gate.amount + gate.fee,
+            openFee: gate.fee,
+            _maxPnl: 0,
+            _minPnl: 0,
+        };
+        this.balance -= pos.cost;
+        pos.pnl = AshareRules.unrealized(pos, entryPrice);
+        if (typeof TradeAddonManager !== 'undefined') {
+            pos.addonData = TradeAddonManager.onOpen(candles, entryPrice, {});
+        }
+        this.positions.push(pos);
+        this._storeCurrentBucket();
+        this.updateUI();
+        return pos;
+    },
+
+    _closeAshareShares(shares, price, bar) {
+        let remaining = shares;
+        const lots = this.positions
+            .filter((pos) => AshareRules.canSell(pos, bar))
+            .sort((a, b) => a.id - b.id);
+        for (const pos of lots) {
+            if (remaining <= 0) break;
+            const take = Math.min(pos.shares, remaining);
+            this._realizeAshare(pos, take, price);
+            remaining -= take;
+        }
+    },
+
+    _realizeAshare(pos, shares, price) {
+        const ratio = shares / pos.shares;
+        const cost = pos.cost * ratio;
+        const amount = shares * price;
+        const fee = AshareRules.commission(amount) + AshareRules.stamp(amount);
+        const proceeds = amount - fee;
+        const pnl = proceeds - cost;
+        this.balance += proceeds;
+        const record = {
+            id: pos.id,
+            side: 'buy',
+            lots: shares / AshareRules.lotSize,
+            shares,
+            leverage: 1,
+            entryPrice: pos.entryPrice,
+            exitPrice: price,
+            tp: pos.tp,
+            sl: pos.sl,
+            symbol: pos.symbol,
+            market: 'ashare',
+            openDate: pos.openDate,
+            closeTime: Date.now(),
+            pnl,
+            fee,
+            mfe: +((pos._maxPnl || 0) * ratio).toFixed(2),
+            mae: +((pos._minPnl || 0) * ratio).toFixed(2),
+            duration: ReplayEngine.replayIndex - pos.openReplayIndex,
+            addonData: pos.addonData,
+        };
+        this.history.push(record);
+        if (shares >= pos.shares) {
+            this.positions = this.positions.filter((item) => item.id !== pos.id);
+        } else {
+            pos.shares -= shares;
+            pos.lots = pos.shares / AshareRules.lotSize;
+            pos.cost -= cost;
+            pos.openFee = (pos.openFee || 0) * (1 - ratio);
+        }
+        this._storeCurrentBucket();
+    },
+
+    _renderAsharePositions(container) {
+        const fmt = (v) => '\u00a5' + v.toFixed(2);
+        container.innerHTML = this.positions.map((p) => `
+      <div class="position-card" data-pos-id="${p.id}">
+        <div class="pos-header">
+          <span class="pos-side ${p.side}">${p.lots}\u624b</span>
+          <button class="pos-close" data-close-id="${p.id}">\u2715</button>
+        </div>
+        <div class="pos-details">
+          <span>Entry</span><strong>${p.entryPrice.toFixed(2)}</strong>
+          <span>\u53ef\u5356</span><strong>${AshareRules.canSell(p, AshareRules.currentBar()) ? '\u662f' : 'T+1'}</strong>
+          <span>SL</span><strong>${p.sl ? p.sl.toFixed(2) : '\u2014'}</strong>
+        </div>
+        <div class="pos-pnl ${p.pnl >= 0 ? 'positive' : 'negative'}">${fmt(p.pnl)}</div>
+      </div>
+    `).join('');
+    },
+
+    _renderAshareHistory(container) {
+        const fmt = (v) => (v >= 0 ? '+' : '') + '\u00a5' + v.toFixed(2);
+        const recent = this.history.slice(-50).reverse();
+        container.innerHTML = recent.map((h, i) => `
+      <div class="history-card ${h.pnl >= 0 ? 'hist-win' : 'hist-loss'}" data-hist-idx="${this.history.length - 1 - i}">
+        <div class="hist-row">
+          <span class="hist-side ${h.side}">${h.side === 'buy' ? '\u591a' : h.side.toUpperCase()}</span>
+          <span class="hist-lots">${h.lots}\u624b</span>
+          <span class="hist-pnl ${h.pnl >= 0 ? 'positive' : 'negative'}">${fmt(h.pnl)}</span>
+        </div>
+        <div class="hist-meta">
+          <span>In ${Number(h.entryPrice).toFixed(2)}</span>
+          <span>Out ${h.exitPrice ? Number(h.exitPrice).toFixed(2) : '\u2014'}</span>
+          <span>${h.openDate || ''}</span>
+        </div>
+        <button class="hist-detail-btn" data-hist-idx="${this.history.length - 1 - i}">Details \u25b8</button>
+      </div>
+    `).join('');
     },
 };

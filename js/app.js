@@ -7,7 +7,7 @@
 
     // ─── DOM refs ───
     const tabs = $$('#tabs .tab');
-    const tabContents = { crypto: $('#tab-crypto'), forex: $('#tab-forex'), csv: $('#tab-csv') };
+    const tabContents = { crypto: $('#tab-crypto'), forex: $('#tab-forex'), csv: $('#tab-csv'), ashare: $('#tab-ashare') };
     const statusBar = $('#status-bar');
     const cryptoSymbol = $('#crypto-symbol'), cryptoCustom = $('#crypto-custom');
     const cryptoDate = $('#crypto-date'), tfSelect = $('#timeframe');
@@ -66,6 +66,8 @@
         const saved = localStorage.getItem('lbr_start_date');
         const iso = saved || (() => { const d = new Date(); d.setDate(d.getDate() - 30); return d.toISOString().split('T')[0]; })();
         cryptoDate.value = iso; forexDate.value = iso;
+        const ashareDate = document.getElementById('ashare-date');
+        if (ashareDate) ashareDate.value = iso;
     }
 
     // ─── Tabs ───
@@ -76,7 +78,9 @@
             Object.values(tabContents).forEach(tc => tc.classList.remove('active'));
             tabContents[tab.dataset.tab].classList.add('active');
             activeTab = tab.dataset.tab;
-            TradingEngine.setAssetType(activeTab === 'crypto' ? 'crypto' : 'forex');
+            if (MarketController.id === 'ashare') TradingEngine.setAssetType('ashare');
+            else TradingEngine.setAssetType(activeTab === 'crypto' ? 'crypto' : 'forex');
+            MarketController.applyChrome();
         });
     });
 
@@ -87,6 +91,7 @@
 
     // ─── Fetch from Binance ───
     btnFetch.addEventListener('click', async () => {
+        if (MarketController.id === 'ashare') return;
         const symbol = cryptoSymbol.value === '__custom__' ? cryptoCustom.value.trim().toUpperCase() : cryptoSymbol.value;
         if (!symbol) { alert('Enter a symbol'); return; }
         const startDate = cryptoDate.value;
@@ -197,7 +202,7 @@
             if (!rawBaseData.length) throw new Error('No valid candles');
             csvModal.classList.add('hidden');
             showStatus(`✓ ${rawBaseData.length} candles from CSV.`, 'success');
-            TradingEngine.setAssetType(activeTab === 'crypto' ? 'crypto' : 'forex');
+            TradingEngine.setAssetType(MarketController.id === 'ashare' ? 'ashare' : (activeTab === 'crypto' ? 'crypto' : 'forex'));
             TradingEngine.reset();
             startReplay(rawBaseData, parseInt(tfSelect.value));
             setTimeout(hideStatus, 3000);
@@ -314,8 +319,8 @@
             tradeTabs.forEach(t => t.classList.remove('active'));
             tab.classList.add('active');
             currentSide = tab.dataset.side;
-            btnPlaceTrade.textContent = currentSide === 'buy' ? 'Place Buy' : 'Place Sell';
             btnPlaceTrade.className = currentSide === 'buy' ? 'btn-trade-buy' : 'btn-trade-buy btn-trade-sell';
+            MarketController.applyChrome();
         });
     });
 
@@ -343,6 +348,14 @@
     function updateTradeValuePreview() {
         const price = ReplayEngine.getCurrentPrice();
         const lots = parseFloat(tradeLots.value) || 0;
+        if (MarketController.id === 'ashare') {
+            const hands = Math.round(lots);
+            if (!price || hands <= 0) { tradeValuePreview.textContent = ''; return; }
+            const amount = hands * AshareRules.lotSize * price;
+            const fee = AshareRules.commission(amount);
+            tradeValuePreview.textContent = `${hands}手 = ${hands * AshareRules.lotSize}股，成交额 ¥${amount.toLocaleString(undefined, {maximumFractionDigits: 2})}，模拟佣金 ¥${fee.toFixed(2)}`;
+            return;
+        }
         const lev = parseInt(tradeLeverage.value) || 10;
         if (!price || lots <= 0) { tradeValuePreview.textContent = ''; return; }
         const notional = lots * price;
@@ -364,11 +377,18 @@
         if (!price) { alert('Load data and start replay first'); return; }
         const usdt = parseFloat(tradeUSDT.value);
         let lots = usdt > 0 && price > 0 ? usdt / price : (parseFloat(tradeLots.value) || 0.1);
-        if (usdt > 0) tradeLots.value = lots.toFixed(4);
-        const lev = parseInt(tradeLeverage.value) || 10;
+        let lev = parseInt(tradeLeverage.value) || 10;
+        if (MarketController.id === 'ashare') {
+            lots = Math.round(parseFloat(tradeLots.value) || 0);
+            lev = 1;
+            tradeLots.value = String(lots);
+        } else if (usdt > 0) {
+            tradeLots.value = lots.toFixed(4);
+        }
         const tpV = parseFloat(tradeTP.value); const tp = isNaN(tpV) ? null : tpV;
         const slV = parseFloat(tradeSL.value); const sl = isNaN(slV) ? null : slV;
-        TradingEngine.openPosition(currentSide, lots, lev, price, tp, sl, currentSymbol);
+        const opened = TradingEngine.openPosition(currentSide, lots, lev, price, tp, sl, currentSymbol);
+        if (!opened && TradingEngine.lastReject) showStatus(TradingEngine.lastReject, 'error');
         tradeTP.value = ''; tradeSL.value = ''; tradeUSDT.value = '';
         // Instant fill: force render so position lines appear even when paused
         ReplayEngine._renderFrame(false);
@@ -486,6 +506,30 @@
         ChartManager.params = readIndicatorParams();
         TradingEngine.updateUI();
         initAddons();
+        window.__lbrShowDataTab = (name) => {
+            if (!tabContents[name]) return;
+            tabs.forEach(t => t.classList.toggle('active', t.dataset.tab === name));
+            Object.entries(tabContents).forEach(([key, el]) => el.classList.toggle('active', key === name));
+            activeTab = name;
+            if (MarketController.id === 'ashare') TradingEngine.setAssetType('ashare');
+            else TradingEngine.setAssetType(name === 'crypto' ? 'crypto' : name === 'forex' ? 'forex' : TradingEngine.assetType);
+        };
+        MarketController.notifier = showStatus;
+        MarketController.onAfterSwitch = () => {
+            rawBaseData = [];
+            ReplayEngine.pause();
+            ReplayEngine.baseData = [];
+            ReplayEngine.replayIndex = 0;
+            if (ChartManager.clearAll) ChartManager.clearAll();
+            btnDownload.classList.add('hidden');
+        };
+        MarketController.init();
+        const btnFetchAshare = document.getElementById('btn-fetch-ashare');
+        if (btnFetchAshare) {
+            btnFetchAshare.addEventListener('click', () => {
+                showStatus('A股行情将在下一阶段由本地服务提供，当前不会拉取数据。', 'error');
+            });
+        }
     }
 
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);

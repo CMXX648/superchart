@@ -391,12 +391,6 @@
         title="Open Only, show candle open price only" data-i18n-title="title.openOnly">
         <span data-i18n="btn.openOnly">仅开盘价</span>
       </button>
-      <button id="btn-draw-hline" class="ctrl-btn ctrl-toggle" type="button" data-draw-tool="hline" aria-pressed="false"
-        data-i18n="draw.hline" data-i18n-title="title.drawHline">水平线</button>
-      <button id="btn-draw-ray" class="ctrl-btn ctrl-toggle" type="button" data-draw-tool="ray" aria-pressed="false"
-        data-i18n="draw.ray" data-i18n-title="title.drawRay">射线</button>
-      <button id="btn-draw-clear" class="ctrl-btn ctrl-toggle" type="button"
-        data-i18n="draw.clear" data-i18n-title="title.drawClear">清空画线</button>
       <div class="tf-control">
         <label class="label" for="timeframe" data-i18n="tf.label">TF</label>
         <select id="timeframe">
@@ -455,6 +449,14 @@
     </div>
 
     <div class="replay-status">
+      <div class="draw-tools">
+        <button id="btn-draw-hline" class="ctrl-btn ctrl-toggle" type="button" data-draw-tool="hline" aria-pressed="false"
+          data-i18n="draw.hline" data-i18n-title="title.drawHline">水平线</button>
+        <button id="btn-draw-ray" class="ctrl-btn ctrl-toggle" type="button" data-draw-tool="ray" aria-pressed="false"
+          data-i18n="draw.ray" data-i18n-title="title.drawRay">射线</button>
+        <button id="btn-draw-clear" class="ctrl-btn ctrl-toggle" type="button"
+          data-i18n="draw.clear" data-i18n-title="title.drawClear">清空画线</button>
+      </div>
       <div class="progress-wrap">
         <input id="progress-bar" type="range" min="0" max="100" value="0" aria-label="回放进度"
           data-i18n-aria-label="progress.label">

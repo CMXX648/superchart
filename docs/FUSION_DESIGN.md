@@ -10,7 +10,7 @@
 
 ## 当前进度（2026-11-12）
 
-阶段 4 已接入。阶段 5 未开始。
+阶段 4 已接入。阶段 5 进行中：bridge 下单走市场规则已完成，逐根决策未开始。
 
 用户已确认：用 `python run.py` 打开 `http://127.0.0.1:8765` 后，可以交易，平仓后侧栏战绩会出现。
 
@@ -18,7 +18,9 @@
 
 局后 AI 口径：Key 在服务端 `data/ai_config.json`。`GET/POST /api/ai/config` 只返回掩码。`POST /api/ai/review` 调用 OpenAI 兼容 `/chat/completions`。没有 Key 时返回错误，不生成假点评。解析失败展示原文，不编造分数。没有 Key 的环境不把真实模型调用记为通过。
 
-下一步：bridge 下单必须走当前市场规则。佣金、T+1、印花税已有代码，还没有单独的验收记录。
+bridge 下单口径：`place_trade`、`close_trade`、`close_all` 经 `TradingEngine` 走当前规则。A 股拒绝时回 `{error, market}`。A 股的整手、T+1、佣金、印花税由 `tests/js/bridge_rules.test.js` 覆盖，未在真实浏览器联调。
+
+下一步：逐根决策。
 
 日常进度以 `AGENTS.md` 为准。本节只在阶段切换时更新。
 
@@ -349,7 +351,7 @@ CSV 仍可导入。导入后服从当前市场规则。界面要始终显示当�
 - `app/static/js/trading.js`、`replay.js`、`app.js`
 
 `js/session.js` 没有单独建文件。本局提交放在 `companion.js`。
-`js/bridge.js` 仍在 `app/static/js/bridge.js`。下单改走规则对象仍放到实时 AI 阶段。
+`js/bridge.js` 仍在 `app/static/js/bridge.js`。下单经 `TradingEngine` 走当前规则对象。
 
 明确不改：
 
@@ -427,9 +429,9 @@ CSV 仍可导入。导入后服从当前市场规则。界面要始终显示当�
 
 ### 阶段 5：实时介入
 
-状态：未开始。
+状态：bridge 下单走市场规则已完成；逐根决策未开始。
 
-- bridge 下单走市场规则。
+- bridge 下单走市场规则。已完成：A 股不能绕过整手和 T+1，拒绝原因回给 Python。
 - 再接逐根决策。
 - 不恢复第二个测试器窗口。
 

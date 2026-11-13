@@ -140,8 +140,8 @@ const BridgeClient = {
 
             // ── Trading Commands ──
             case 'place_trade': this._placeTrade(msg, request_id); break;
-            case 'close_trade': this._closeTrade(msg); break;
-            case 'close_all': this._closeAll(); break;
+            case 'close_trade': this._closeTrade(msg, request_id); break;
+            case 'close_all': this._closeAll(request_id); break;
             case 'modify_trade': this._modifyTrade(msg); break;
 
             // ── Data Requests ──
@@ -313,28 +313,53 @@ const BridgeClient = {
 
     // ═══════════ TRADING IMPLEMENTATIONS ═══════════
 
+    // Orders go through TradingEngine, so the active market's rules decide.
+    // A rejection is sent back to Python as { error, market }.
     _placeTrade(msg, requestId) {
         const { side, lots, leverage, tp, sl, symbol } = msg;
+        const market = TradingEngine.marketId;
         const price = ReplayEngine.getCurrentPrice();
-        if (!price) { this._sendResponse(requestId, { error: 'No price data' }); return; }
-        const pos = TradingEngine.openPosition(
+        if (!price) { this._sendResponse(requestId, { error: 'No price data', market }); return; }
+        const result = TradingEngine.openPosition(
             side || 'buy', lots || 0.1, leverage || 10,
             price, tp || null, sl || null, symbol || ''
         );
-        this._log(`Trade: ${side} ${lots}L @${price.toFixed(2)}`);
-        this._sendResponse(requestId, { position_id: pos.id, entry_price: price });
+        if (!result) {
+            const error = TradingEngine.lastReject || 'Trade rejected';
+            this._log(`Rejected: ${side} ${lots}L — ${error}`);
+            this._sendResponse(requestId, { error, market });
+            return;
+        }
+        if (result.closed) {
+            this._log(`Sold: ${lots}L @${price.toFixed(2)}`);
+            this._sendResponse(requestId, { closed: true, exit_price: price, market });
+            return;
+        }
+        this._log(`Trade: ${side} ${result.lots}L @${price.toFixed(2)}`);
+        this._sendResponse(requestId, {
+            position_id: result.id, entry_price: price,
+            lots: result.lots, leverage: result.leverage, market,
+        });
     },
 
-    _closeTrade(msg) {
+    _closeTrade(msg, requestId) {
         const price = ReplayEngine.getCurrentPrice();
+        TradingEngine.lastReject = '';
         TradingEngine.closePosition(msg.position_id, price);
-        this._log(`Closed position #${msg.position_id}`);
+        const error = TradingEngine.lastReject;
+        this._log(error ? `Close #${msg.position_id} rejected — ${error}` : `Closed position #${msg.position_id}`);
+        this._sendResponse(requestId, error ? { error, market: TradingEngine.marketId } : { ok: true });
     },
 
-    _closeAll() {
+    _closeAll(requestId) {
         const price = ReplayEngine.getCurrentPrice();
+        TradingEngine.lastReject = '';
         TradingEngine.closeAll(price);
-        this._log('All positions closed');
+        const error = TradingEngine.lastReject;
+        this._log(error ? `Close all: ${error}` : 'All positions closed');
+        this._sendResponse(requestId, error
+            ? { error, open: TradingEngine.positions.length, market: TradingEngine.marketId }
+            : { ok: true });
     },
 
     _modifyTrade(msg) {
@@ -358,7 +383,9 @@ const BridgeClient = {
         }
         try {
             const tf = parseInt(timeframe) || 60;
-            const assetType = asset_type || 'forex';
+            // A-share mode keeps A-share rules whatever asset_type Python sends.
+            const assetType = TradingEngine.marketId === 'ashare' ? 'ashare'
+                : (asset_type === 'crypto' ? 'crypto' : 'forex');
             const sym = symbol || '';
 
             TradingEngine.setAssetType(assetType);
@@ -389,7 +416,7 @@ const BridgeClient = {
             setTimeout(() => ReplayEngine.play(), 300);
 
             this._log(`✅ ${sym} loaded: ${candles.length} candles @ ${tf}m (${assetType})`);
-            this._sendResponse(requestId, { ok: true, candles: candles.length, symbol: sym, timeframe: tf });
+            this._sendResponse(requestId, { ok: true, candles: candles.length, symbol: sym, timeframe: tf, asset_type: assetType });
         } catch (err) {
             this._sendResponse(requestId, { error: err.message });
             this._log(`❌ load_data error: ${err.message}`);

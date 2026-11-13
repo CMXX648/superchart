@@ -215,29 +215,41 @@ class Bridge:
     async def place_trade(self, side: str = 'buy', lots: float = 0.1,
                           leverage: int = 10, tp: float = None,
                           sl: float = None, symbol: str = '') -> dict:
-        """Place a simulated trade.
+        """Place a simulated trade. The chart applies its current market rules.
 
         Args:
             side: 'buy' or 'sell'
-            lots: Position size
-            leverage: Leverage multiplier
+            lots: Position size. A-share: whole lots, 1 lot = 100 shares
+            leverage: Leverage multiplier. A-share always uses 1
             tp: Take profit price (optional)
             sl: Stop loss price (optional)
             symbol: Trading symbol
 
         Returns:
-            dict with 'position_id' and 'entry_price'
+            dict with 'position_id', 'entry_price', 'lots', 'leverage', 'market'.
+            A-share 'sell' sells held shares (oldest sellable first) and returns
+            'closed': True with 'exit_price'. A rejected order (A-share odd lot,
+            T+1, short, not enough cash; or an addon block) returns 'error'
+            with the reason and 'market'.
         """
         return await self._request('place_trade', side=side, lots=lots,
                                     leverage=leverage, tp=tp, sl=sl, symbol=symbol)
 
-    async def close_trade(self, position_id: int):
-        """Close a specific position by ID."""
-        await self._send_cmd('close_trade', position_id=position_id)
+    async def close_trade(self, position_id: int) -> dict:
+        """Close a specific position by ID.
 
-    async def close_all(self):
-        """Close all open positions."""
-        await self._send_cmd('close_all')
+        Returns {'ok': True}, or {'error': reason} when the market rules refuse
+        (e.g. A-share T+1).
+        """
+        return await self._request('close_trade', position_id=position_id)
+
+    async def close_all(self) -> dict:
+        """Close all open positions.
+
+        Returns {'ok': True}, or {'error': reason, 'open': n} when some
+        positions stay open (e.g. A-share T+1).
+        """
+        return await self._request('close_all')
 
     async def load_data(self, candles: List[dict], *,
                         symbol: str = '', asset_type: str = 'forex',
@@ -247,7 +259,8 @@ class Bridge:
         Args:
             candles: List of dicts with keys: time (unix), open, high, low, close, volume
             symbol:  Symbol name shown in UI (e.g. 'EURUSD')
-            asset_type: 'forex' or 'crypto'
+            asset_type: 'forex' or 'crypto'. Ignored in A-share mode, which
+                        keeps A-share rules
             timeframe: Candle size in minutes (5, 15, 30, 60, 240, 1440 …)
 
         Returns:
@@ -377,17 +390,35 @@ class Bridge:
         # Notify chart
         await self.notify("🧩 Python bridge connected!", duration=3000)
 
+        # Responses resolve here; events run in order on a worker, so a handler
+        # can await place_trade() and still receive the chart's reply.
+        events = asyncio.Queue()
+        worker = asyncio.create_task(self._drain(events))
         try:
             async for raw in ws:
                 try:
                     msg = json.loads(raw)
-                    await self._on_message(msg)
                 except json.JSONDecodeError:
-                    pass
+                    continue
+                if msg.get('type') == 'response':
+                    await self._on_message(msg)
+                else:
+                    events.put_nowait(msg)
+            await events.join()
         except websockets.ConnectionClosed:
             print("⚠️  Chart disconnected")
             self._ws = None
             self._connected.clear()
+        finally:
+            worker.cancel()
+
+    async def _drain(self, events):
+        while True:
+            msg = await events.get()
+            try:
+                await self._on_message(msg)
+            finally:
+                events.task_done()
 
     async def _on_message(self, msg):
         msg_type = msg.get('type')

@@ -2,6 +2,8 @@
 
 This document covers the full thought process, architecture, and every feature built for the LocalBarReplay project.
 
+融合后的验收口径在 `docs/FUSION_DESIGN.md`。随机起点、前置 K 线、画线见该文第 17 节，本文不重复。
+
 ---
 
 ## 1. Project Goal

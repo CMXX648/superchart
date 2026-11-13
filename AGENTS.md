@@ -34,7 +34,7 @@ KLinePlayground/       只复用行情代码，不提交
 
 bridge 下单：`place_trade`、`close_trade`、`close_all` 都经 `TradingEngine` 走当前市场规则。A 股模式下整手、只做多、T+1、现金不足整笔拒绝，杠杆固定 1；拒绝时回 `{error, market}` 给 Python。`load_data` 的 `asset_type` 在 A 股模式下不生效。SDK 的事件处理放到单独任务，`on_candle` 里 `await place_trade()` 能拿到回复。验收：`tests/js/bridge_rules.test.js`（node 跑真实前端文件）和 `tests/test_bridge_sdk.py`，未在真实浏览器联调。
 
-未做：逐根决策；`trade_open`/`trade_close` 事件尚无调用方。
+未做：逐根决策；`trade_open`/`trade_close` 事件尚无调用方。随机起点、前置 30 根、水平线与射线的口径在 `docs/FUSION_DESIGN.md` 第 17 节，未实现。
 
 ## 提交
 

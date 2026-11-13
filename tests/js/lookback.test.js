@@ -19,6 +19,8 @@ const ctx = vm.createContext({
     setTimeout: (f) => f(),
     setInterval: () => 1,
     clearInterval() {},
+    clearTimeout() {},
+    AbortController,
     URL,
     I18n: { t: (k) => k },
     TradingEngine: { positions: [] },

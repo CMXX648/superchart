@@ -18,6 +18,9 @@ class FrontendJsTest(unittest.TestCase):
     def test_origin_pointer_and_lookback(self):
         self._run("lookback.test.js")
 
+    def test_user_drawings(self):
+        self._run("drawings.test.js")
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -38,7 +38,9 @@ bridge 下单：`place_trade`、`close_trade`、`close_all` 都经 `TradingEngin
 
 随机起点（第 17.2 节）：两个日期框旁的「随机」只填日期，不自动获取，不遮罩时间。加密货币用 `fetchBinanceKlinesPage(symbol, '5m', 0)`（被拒则 1）取最早一根，按显示周期留出前置 30 根和剩余 60 根，抽 UTC 日期。A 股 `random=1` 在服务端 `api.pick_random_origin` 抽日历日、非交易日取下一根，响应带 `origin_time`；不足 90 根回 422 `too_short`，前端给说明。
 
-未做：逐根决策；`trade_open`/`trade_close` 事件尚无调用方。第 17.4 节水平线与射线未实现。
+水平线与射线（第 17.4 节）：`app/static/js/drawings.js`，回放条上「水平线」「射线」「清空画线」。水平线是 `createPriceLine`，射线是 series primitive，从锚点穿过第二点向前裁到窗格边缘，不产生新时间。用户画线不进 `_positionLines` 和 `BridgeClient.drawings`，与止盈止损点选互斥；点线选中后 Delete/Backspace 删除，Ctrl+Z 撤销上一条；锚点晚于最后一根可见 K 线时隐藏。新一次加载和 `clearAll` 清空，不存库，不进 AI。node 测试用桩替代图表库，未在真实浏览器里看过。
+
+未做：逐根决策；`trade_open`/`trade_close` 事件尚无调用方。
 
 ## 提交
 

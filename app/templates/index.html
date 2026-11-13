@@ -391,6 +391,12 @@
         title="Open Only, show candle open price only" data-i18n-title="title.openOnly">
         <span data-i18n="btn.openOnly">仅开盘价</span>
       </button>
+      <button id="btn-draw-hline" class="ctrl-btn ctrl-toggle" type="button" data-draw-tool="hline" aria-pressed="false"
+        data-i18n="draw.hline" data-i18n-title="title.drawHline">水平线</button>
+      <button id="btn-draw-ray" class="ctrl-btn ctrl-toggle" type="button" data-draw-tool="ray" aria-pressed="false"
+        data-i18n="draw.ray" data-i18n-title="title.drawRay">射线</button>
+      <button id="btn-draw-clear" class="ctrl-btn ctrl-toggle" type="button"
+        data-i18n="draw.clear" data-i18n-title="title.drawClear">清空画线</button>
       <div class="tf-control">
         <label class="label" for="timeframe" data-i18n="tf.label">TF</label>
         <select id="timeframe">
@@ -549,6 +555,7 @@ plot(mySlow, title=&quot;Slow SMA&quot;, color=aqua)"></textarea>
   <script src="/static/js/indicators.js"></script>
   <script src="/static/js/pinescript.js"></script>
   <script src="/static/js/chart.js"></script>
+  <script src="/static/js/drawings.js"></script>
   <script src="/static/js/i18n.js"></script>
   <script src="/static/js/rules/crypto.js"></script>
   <script src="/static/js/rules/ashare.js"></script>

@@ -157,6 +157,7 @@ const ReplayEngine = {
         this._setOrigin(sliced.origin);
         this.replayIndex = this.originIndex;
         this._baseIdx = this._baseOrigin;
+        if (typeof Drawings !== 'undefined') Drawings.clear(); // user drawings live for one load
         this._syncSubMode();
         this._updateSpeedLabel();
         this._renderFrame(true);
@@ -317,6 +318,7 @@ const ReplayEngine = {
         }
 
         ChartManager.updateData(visible, this.indicatorState);
+        if (typeof Drawings !== 'undefined') Drawings.setLastTime(visible[visible.length - 1].time);
 
         // Only force-fit on explicit jumps (load, TF switch, go-to-start/end)
         if (fitContent) {

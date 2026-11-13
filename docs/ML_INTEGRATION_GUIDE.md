@@ -227,25 +227,36 @@ await bridge.clear_drawings()
 ### Trading Commands
 
 #### `place_trade(side, lots, leverage, tp, sl, symbol) → dict`
-Place a simulated trade at the current replay price.
+Place a simulated trade at the current replay price. The order goes through the chart's current market rules (A股 / 加密货币 switch).
 
 ```python
 result = await bridge.place_trade(
     side='buy', lots=0.1, leverage=10,
     tp=44000.0, sl=41000.0, symbol='BTCUSDT'
 )
-# result = {'position_id': 1, 'entry_price': 42500.0}
+# result = {'position_id': 1, 'entry_price': 42500.0, 'lots': 0.1, 'leverage': 10, 'market': 'crypto'}
 ```
+
+A-share mode: `lots` must be whole lots (1 lot = 100 shares), leverage is always 1, there is no short. `side='sell'` sells held shares, oldest sellable lot first, and returns `{'closed': True, 'exit_price': ..., 'market': 'ashare'}`. Shares bought today cannot be sold (T+1). Fees are the simulated commission and sell-side stamp tax.
+
+A rejected order returns the reason instead of a position:
+
+```python
+# {'error': 'A股数量必须是整数手（1手=100股）', 'market': 'ashare'}
+```
+
+`load_data(..., asset_type=...)` does not change the rules in A-share mode.
 
 #### `close_trade(position_id)`
 Close a specific position.
 
 ```python
-await bridge.close_trade(position_id=1)
+r = await bridge.close_trade(position_id=1)
+# {'ok': True}, or {'error': 'T+1，当日买入不能卖出', 'market': 'ashare'}
 ```
 
 #### `close_all()`
-Close all open positions.
+Close all open positions. Returns `{'ok': True}`, or `{'error': ..., 'open': n, 'market': ...}` when market rules keep some open.
 
 #### `modify_trade(position_id, *, tp, sl)`
 Update TP/SL of an existing position.

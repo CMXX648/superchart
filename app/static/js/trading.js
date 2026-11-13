@@ -112,8 +112,8 @@ const TradingEngine = {
         if (typeof TradeAddonManager !== 'undefined') {
             const blockResult = TradeAddonManager.onBeforeTrade(candles, entryPrice, { side, lots, leverage, tp, sl, symbol });
             if (blockResult !== true) {
-                const reason = typeof blockResult === 'string' ? blockResult : 'Trade blocked by addon';
-                console.warn('[TradingEngine]', reason);
+                this.lastReject = typeof blockResult === 'string' ? blockResult : 'Trade blocked by addon';
+                console.warn('[TradingEngine]', this.lastReject);
                 return null;
             }
         }

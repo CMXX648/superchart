@@ -110,9 +110,7 @@
         const originTime = new Date(startDate).getTime() / 1000;
         try {
             showStatus(`Fetching ${symbol} from Binance…`);
-            // Once replay runs, background pages must not keep re-opening the spinner overlay.
-            const onProgress = (msg) => { if (!earlyStarted) showStatus(msg); };
-            rawBaseData = await fetchAllBinanceData(symbol, startDate, onProgress, (partialData, isFinal) => {
+            rawBaseData = await fetchAllBinanceData(symbol, startDate, showStatus, (partialData, isFinal) => {
                 if (!earlyStarted && !isFinal) {
                     // First chunk — start replay immediately
                     earlyStarted = true;
@@ -120,7 +118,7 @@
                     TradingEngine.reset();
                     rawBaseData = partialData;
                     startReplay(partialData, tf, { market: 'crypto', symbol: currentSymbol, interval: '5m', adjust: 'none', baseMinutes: 5, saveCandles: true, originTime });
-                    showStatus(`Playing with ${partialData.length} bars… still fetching more in background`, 'success', 4000);
+                    showStatus(`Playing with ${partialData.length} bars… still fetching more in background`);
                 } else if (isFinal) {
                     // Background fetch finished — silently extend the data
                     rawBaseData = partialData;

@@ -52,6 +52,34 @@ class LookbackWindowTest(unittest.TestCase):
         self.assertEqual(api.lookback_window(BARS, BARS[-1]["time"] + 86400, 30), ([], None))
 
 
+class FixedRng:
+    def __init__(self, pick):
+        self.pick = pick
+
+    def randint(self, lo, hi):
+        return lo if self.pick == "lo" else hi if self.pick == "hi" else self.pick
+
+
+class RandomOriginTest(unittest.TestCase):
+    def test_bounds_leave_lookback_and_remaining(self):
+        self.assertEqual(api.pick_random_origin(BARS, 30, 60, FixedRng("lo")), BARS[30]["time"])
+        self.assertEqual(api.pick_random_origin(BARS, 30, 60, FixedRng("hi")), BARS[-60]["time"])
+
+    def test_non_trading_day_snaps_to_next_bar(self):
+        sunday = date_to_unix("2024-02-18") // 86400
+        self.assertEqual(api.pick_random_origin(BARS, 30, 60, FixedRng(sunday)), date_to_unix("2024-02-19"))
+
+    def test_too_short(self):
+        self.assertIsNone(api.pick_random_origin(BARS[:89], 30, 60))
+        self.assertIsNotNone(api.pick_random_origin(BARS[:90], 30, 60))
+
+    def test_real_rng_stays_in_range(self):
+        for _ in range(200):
+            t = api.pick_random_origin(BARS, 30, 60)
+            i = next(i for i, b in enumerate(BARS) if b["time"] == t)
+            self.assertTrue(30 <= i <= len(BARS) - 60)
+
+
 class AshareRouteTest(unittest.TestCase):
     def setUp(self):
         app = Flask(__name__)
@@ -78,6 +106,23 @@ class AshareRouteTest(unittest.TestCase):
         self.assertEqual(cached["origin_time"], fresh["origin_time"])
         self.assertEqual(len(upsert.call_args[0][4]), len(BARS), "database still stores everything")
         self.assertEqual(len(cached["candles"]), 30 + sum(1 for b in BARS if b["time"] >= cached["origin_time"]))
+
+    def test_random_returns_origin_with_background(self):
+        with mock.patch.object(api.db, "load_candles", return_value=list(BARS)):
+            data = self.get(start="", random="1").get_json()
+        origin = data["origin_time"]
+        self.assertIn(origin, [b["time"] for b in BARS])
+        i = next(i for i, b in enumerate(data["candles"]) if b["time"] == origin)
+        self.assertEqual(i, 30)
+        self.assertGreaterEqual(len(data["candles"]) - i, 60)
+
+    def test_random_too_short_explains(self):
+        with mock.patch.object(api.db, "load_candles", return_value=BARS[:50]):
+            res = self.get(start="", random="1")
+        self.assertEqual(res.status_code, 422)
+        self.assertEqual(res.get_json()["code"], "too_short")
+        self.assertEqual(res.get_json()["need"], 90)
+        self.assertEqual(res.get_json()["have"], 50)
 
     def test_without_lookback_keeps_old_behavior(self):
         with mock.patch.object(api.db, "load_candles", return_value=list(BARS)):

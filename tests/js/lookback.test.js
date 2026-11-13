@@ -36,7 +36,7 @@ const ctx = vm.createContext({
     }),
 });
 vm.runInContext(['aggregation.js', 'replay.js', 'data.js'].map(js).join('\n')
-    + '\n;Object.assign(globalThis, { ReplayEngine, LOOKBACK_BARS, lookbackSlice, lookbackStartMs, fetchAllBinanceData, cacheKey });', ctx);
+    + '\n;Object.assign(globalThis, { ReplayEngine, LOOKBACK_BARS, lookbackSlice, lookbackStartMs, fetchAllBinanceData, cacheKey, randomStartDate, fetchEarliestBinanceMs, MIN_REMAINING_BARS });', ctx);
 const R = ctx.ReplayEngine;
 R.dom = { playBtn: el(), speedSlider: el(), speedLabel: el(), speedStops: [], progressBar: el(), barCounter: el(), datetime: el() };
 
@@ -158,5 +158,30 @@ const fromSec = T - 30 * H;
     assert.equal(binanceCalls[0][0], fromSec * 1000);
     R.loadData(got, 60, 5, T);
     assert.equal(shown.length, 31);
+
+    // ── Random start (crypto): earliest bar via startTime=0, fallback to 1 ──
+    const DAY = 86400000;
+    assert.equal(ctx.MIN_REMAINING_BARS, 60);
+    const earliest = Date.UTC(2020, 0, 1, 7);
+    const now = Date.UTC(2020, 6, 1);
+    const first = ctx.randomStartDate(earliest, now, 60, () => 0);
+    const last = ctx.randomStartDate(earliest, now, 60, () => 0.999999);
+    assert.equal(first, '2020-01-03', 'first whole UTC day with 30 x 1h before it');
+    assert.ok(Date.parse(last) <= now - 60 * H * 1000, '60 x 1h left after the last pick');
+    assert.ok(Date.parse(first) - earliest >= 30 * H * 1000);
+    assert.equal(ctx.randomStartDate(earliest, earliest + 80 * DAY, 1440), null, '1D needs ~90 days');
+    assert.ok(ctx.randomStartDate(earliest, earliest + 92 * DAY, 1440));
+    assert.match(ctx.randomStartDate(earliest, now, 60), /^\d{4}-\d{2}-\d{2}$/);
+
+    const seen = [];
+    ctx.fetch = async (url) => {
+        const s = new URL(url).searchParams.get('startTime');
+        seen.push(s);
+        if (s === '0') return { ok: false, status: 400, statusText: 'Bad Request' };
+        return { ok: true, json: async () => [[earliest, '1', '1', '1', '1', '1']] };
+    };
+    assert.equal(await ctx.fetchEarliestBinanceMs('BTCUSDT'), earliest);
+    assert.deepEqual(seen, ['0', '1']);
+
     console.log('lookback: ok');
 })().catch((e) => { console.error(e); process.exit(1); });

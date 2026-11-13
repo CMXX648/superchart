@@ -184,7 +184,7 @@ const Companion = {
         return response.json();
     },
 
-    async fetchAshare(code, start, adjust, refresh, lookback) {
+    async fetchAshare(code, start, adjust, refresh, lookback, random) {
         const params = new URLSearchParams({
             code: code,
             start: start || '',
@@ -192,9 +192,10 @@ const Companion = {
             refresh: refresh ? '1' : '0',
             lookback: String(lookback || 0),
         });
+        if (random) params.set('random', '1');
         const response = await fetch('/api/ashare/klines?' + params.toString());
         const data = await response.json();
-        if (!response.ok) throw new Error(data.error || 'A-share request failed');
+        if (!response.ok) throw Object.assign(new Error(data.error || 'A-share request failed'), { data: data });
         return data;
     },
 };

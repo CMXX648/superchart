@@ -1,5 +1,6 @@
 """JSON API for candles, users, sessions and trades."""
 
+import random
 import uuid
 
 from flask import Blueprint, jsonify, request
@@ -10,6 +11,7 @@ from app.services.ashare import date_to_unix, fetch_frame, frame_to_candles
 bp = Blueprint("api", __name__)
 
 LOOKBACK_BARS = 30
+MIN_REMAINING_BARS = 60
 
 
 def lookback_window(candles, start_unix, lookback):
@@ -23,10 +25,17 @@ def lookback_window(candles, start_unix, lookback):
     return candles[max(0, origin - lookback):], candles[origin]["time"]
 
 
-def _window(candles, start, lookback):
-    if not start:
-        return candles, None
-    return lookback_window(candles, date_to_unix(start), lookback)
+def pick_random_origin(candles, lookback, remaining, rng=random):
+    """Draw a calendar day that leaves `lookback` bars before it and `remaining` bars from it.
+
+    A non-trading day snaps to the next bar. Returns the bar time, or None when history is too short.
+    """
+    if len(candles) < lookback + remaining:
+        return None
+    lo = candles[lookback]["time"] // 86400
+    hi = candles[len(candles) - remaining]["time"] // 86400
+    day = rng.randint(lo, hi) * 86400
+    return next(bar["time"] for bar in candles if bar["time"] >= day)
 
 
 def _int_arg(name, limit):
@@ -126,31 +135,31 @@ def ashare_klines():
     lookback = _int_arg("lookback", LOOKBACK_BARS)
     cached = [] if refresh else db.load_candles("ashare", code, "1d", adjust)
     if cached and not refresh:
-        candles, origin_time = _window(cached, start, lookback)
-        return jsonify({
-            "symbol": code, "name": code, "adjust": adjust, "source": "database",
-            "base_interval": "1d", "candles": candles, "from_cache": True,
-            "origin_time": origin_time,
-        })
-    try:
-        frame, name, chosen = fetch_frame(code, source, adjust)
-    except Exception as exc:
-        if cached:
-            candles, origin_time = _window(cached, start, lookback)
+        candles, extra = cached, {"name": code, "source": "database", "from_cache": True}
+    else:
+        try:
+            frame, name, chosen = fetch_frame(code, source, adjust)
+        except Exception as exc:
+            if not cached:
+                return jsonify({"error": "failed to load A-share bars: %s" % exc}), 502
+            candles, extra = cached, {"name": code, "source": "database", "from_cache": True, "warning": str(exc)}
+        else:
+            candles = frame_to_candles(frame)
+            db.upsert_candles("ashare", code, "1d", adjust, candles)
+            extra = {"name": name, "source": chosen, "from_cache": False}
+    start_unix = date_to_unix(start) if start else None
+    if request.args.get("random") == "1":
+        start_unix = pick_random_origin(candles, lookback, MIN_REMAINING_BARS)
+        if start_unix is None:
             return jsonify({
-                "symbol": code, "name": code, "adjust": adjust, "source": "database",
-                "base_interval": "1d", "candles": candles, "from_cache": True,
-                "origin_time": origin_time, "warning": str(exc),
-            })
-        return jsonify({"error": "failed to load A-share bars: %s" % exc}), 502
-    candles = frame_to_candles(frame)
-    db.upsert_candles("ashare", code, "1d", adjust, candles)
-    candles, origin_time = _window(candles, start, lookback)
-    return jsonify({
-        "symbol": code, "name": name, "adjust": adjust, "source": chosen,
-        "base_interval": "1d", "candles": candles, "from_cache": False,
-        "origin_time": origin_time,
-    })
+                "error": "history too short for a random start", "code": "too_short",
+                "need": lookback + MIN_REMAINING_BARS, "have": len(candles),
+            }), 422
+    origin_time = None
+    if start_unix is not None:
+        candles, origin_time = lookback_window(candles, start_unix, lookback)
+    return jsonify(dict(extra, symbol=code, adjust=adjust, base_interval="1d",
+                        candles=candles, origin_time=origin_time))
 
 
 @bp.get("/ai/config")

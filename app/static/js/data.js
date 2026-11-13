@@ -38,6 +38,30 @@ function lookbackStartMs(startMs, tfMinutes, bars) {
     return Math.floor(startMs / period) * period - bars * period;
 }
 
+const MIN_REMAINING_BARS = 60;
+
+/** Open time (ms) of the symbol's first 5m bar. */
+async function fetchEarliestBinanceMs(symbol) {
+    let raw;
+    try { raw = await fetchBinanceKlinesPage(symbol, '5m', 0); }
+    catch (err) { raw = await fetchBinanceKlinesPage(symbol, '5m', 1); }
+    if (!raw || !raw.length) throw new Error('No data returned.');
+    return raw[0][0];
+}
+
+/**
+ * Random UTC start date (YYYY-MM-DD) leaving LOOKBACK_BARS display candles before it
+ * and MIN_REMAINING_BARS from it. Null when the history is too short.
+ */
+function randomStartDate(earliestMs, nowMs, tfMinutes, rng) {
+    const period = Math.max(tfMinutes || 60, 5) * 60000, DAY = 86400000;
+    const lo = Math.ceil((earliestMs + LOOKBACK_BARS * period) / DAY);
+    const hi = Math.floor((nowMs - MIN_REMAINING_BARS * period) / DAY);
+    if (hi < lo) return null;
+    const day = lo + Math.floor((rng || Math.random)() * (hi - lo + 1));
+    return new Date(day * DAY).toISOString().slice(0, 10);
+}
+
 /** All 5m bars in [startMs, endMs). */
 async function fetchBinance5m(symbol, startMs, endMs) {
     const bars = [];

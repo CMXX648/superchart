@@ -1,7 +1,10 @@
 /* ═══════════════ Data Fetching: Binance API + CSV + Smart Caching ═══════════════ */
 
+const BINANCE_TIMEOUT_MS = 15000;
+
 /**
  * Fetch klines from Binance public API (single page, max 1000 bars).
+ * A page that does not answer in BINANCE_TIMEOUT_MS rejects instead of hanging the caller.
  */
 async function fetchBinanceKlinesPage(symbol, interval, startTime, endTime) {
     const url = new URL('https://api.binance.com/api/v3/klines');
@@ -10,14 +13,79 @@ async function fetchBinanceKlinesPage(symbol, interval, startTime, endTime) {
     url.searchParams.set('startTime', startTime);
     if (endTime) url.searchParams.set('endTime', endTime);
     url.searchParams.set('limit', '1000');
-    const res = await fetch(url.toString());
-    if (!res.ok) throw new Error(`Binance API error: ${res.status} ${res.statusText}`);
-    return res.json();
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), BINANCE_TIMEOUT_MS);
+    try {
+        const res = await fetch(url.toString(), { signal: ctrl.signal });
+        if (!res.ok) throw new Error(`Binance API error: ${res.status} ${res.statusText}`);
+        return await res.json();
+    } catch (err) {
+        if (err.name === 'AbortError') throw new Error(`Binance request timed out after ${BINANCE_TIMEOUT_MS / 1000}s`);
+        throw err;
+    } finally {
+        clearTimeout(timer);
+    }
 }
 
 function binanceInterval(minutes) {
     const map = { 1: '1m', 3: '3m', 5: '5m', 15: '15m', 30: '30m', 60: '1h', 120: '2h', 240: '4h', 360: '6h', 480: '8h', 720: '12h', 1440: '1d' };
     return map[minutes] || '5m';
+}
+
+function klineToBar(k) {
+    return {
+        time: Math.floor(k[0] / 1000),
+        open: parseFloat(k[1]), high: parseFloat(k[2]),
+        low: parseFloat(k[3]), close: parseFloat(k[4]),
+        volume: parseFloat(k[5]),
+    };
+}
+
+/**
+ * Start (ms) of the background window: `bars` display candles before the one containing startMs.
+ * Counted on the display timeframe, so 30 x 1h is fetched as 360 x 5m.
+ */
+function lookbackStartMs(startMs, tfMinutes, bars) {
+    const period = Math.max(tfMinutes || 60, 5) * 60000;
+    return Math.floor(startMs / period) * period - bars * period;
+}
+
+const MIN_REMAINING_BARS = 60;
+
+/** Open time (ms) of the symbol's first 5m bar. */
+async function fetchEarliestBinanceMs(symbol) {
+    let raw;
+    try { raw = await fetchBinanceKlinesPage(symbol, '5m', 0); }
+    catch (err) { raw = await fetchBinanceKlinesPage(symbol, '5m', 1); }
+    if (!raw || !raw.length) throw new Error('No data returned.');
+    return raw[0][0];
+}
+
+/**
+ * Random UTC start date (YYYY-MM-DD) leaving LOOKBACK_BARS display candles before it
+ * and MIN_REMAINING_BARS from it. Null when the history is too short.
+ */
+function randomStartDate(earliestMs, nowMs, tfMinutes, rng) {
+    const period = Math.max(tfMinutes || 60, 5) * 60000, DAY = 86400000;
+    const lo = Math.ceil((earliestMs + LOOKBACK_BARS * period) / DAY);
+    const hi = Math.floor((nowMs - MIN_REMAINING_BARS * period) / DAY);
+    if (hi < lo) return null;
+    const day = lo + Math.floor((rng || Math.random)() * (hi - lo + 1));
+    return new Date(day * DAY).toISOString().slice(0, 10);
+}
+
+/** All 5m bars in [startMs, endMs). */
+async function fetchBinance5m(symbol, startMs, endMs) {
+    const bars = [];
+    while (startMs < endMs) {
+        const raw = await fetchBinanceKlinesPage(symbol, '5m', startMs, endMs - 1);
+        if (!raw || raw.length === 0) break;
+        for (const k of raw) bars.push(klineToBar(k));
+        startMs = raw[raw.length - 1][0] + 1;
+        if (raw.length < 1000) break;
+        await new Promise(r => setTimeout(r, 120));
+    }
+    return bars;
 }
 
 /**
@@ -31,7 +99,7 @@ function cacheKey(symbol, startDate) {
  * Check if we have cached data that covers the requested date range.
  * Returns the cached data if it covers the range, or null.
  */
-async function checkCache(symbol, startDate) {
+async function checkCache(symbol, startDate, fromSec) {
     const key = cacheKey(symbol, startDate);
     const cached = await loadFromIDB(key);
     if (cached && cached.length > 0) return cached;
@@ -46,12 +114,12 @@ async function checkCache(symbol, startDate) {
         req.onsuccess = async () => {
             const prefix = symbol.toUpperCase() + '_5m_';
             const matchingKeys = (req.result || []).filter(k => typeof k === 'string' && k.startsWith(prefix));
-            const targetStart = new Date(startDate).getTime() / 1000;
+            const targetStart = fromSec;
 
             for (const mk of matchingKeys) {
                 const data = await loadFromIDB(mk);
                 if (data && data.length > 0 && data[0].time <= targetStart) {
-                    // This cached data starts before our requested date — reuse it
+                    // This cached data covers the background window — reuse it
                     return resolve(data);
                 }
             }
@@ -83,11 +151,18 @@ function mergeData(existing, newData) {
  * @param {Function} [onEarlyData]  called with partial data once we have ~30 days worth,
  *                                  so replay can start while background fetch continues.
  *                                  Also called with final complete data at the end.
+ * @param {number} [tfMinutes]      display timeframe; the background window is LOOKBACK_BARS of it.
  */
-async function fetchAllBinanceData(symbol, startDate, onProgress, onEarlyData) {
+async function fetchAllBinanceData(symbol, startDate, onProgress, onEarlyData, tfMinutes) {
+    const fromMs = lookbackStartMs(new Date(startDate).getTime(), tfMinutes, LOOKBACK_BARS);
     // Check cache
     if (onProgress) onProgress('Checking local cache…');
-    const cached = await checkCache(symbol, startDate);
+    let cached = await checkCache(symbol, startDate, fromMs / 1000);
+    // Old caches for this date often start at T: fetch the missing background prefix.
+    if (cached && cached.length > 0 && cached[0].time * 1000 > fromMs) {
+        if (onProgress) onProgress('Fetching earlier bars…');
+        cached = mergeData(await fetchBinance5m(symbol, fromMs, cached[0].time * 1000), cached);
+    }
 
     let startTime;
     if (cached && cached.length > 0) {
@@ -95,7 +170,7 @@ async function fetchAllBinanceData(symbol, startDate, onProgress, onEarlyData) {
         startTime = lastCachedTime + 1;
         if (onProgress) onProgress(`Found ${cached.length} cached bars. Fetching updates…`);
     } else {
-        startTime = new Date(startDate).getTime();
+        startTime = fromMs;
     }
 
     const endTime = Date.now();
@@ -116,14 +191,7 @@ async function fetchAllBinanceData(symbol, startDate, onProgress, onEarlyData) {
         const raw = await fetchBinanceKlinesPage(symbol, '5m', startTime, endTime);
         if (!raw || raw.length === 0) break;
 
-        for (const k of raw) {
-            allBars.push({
-                time: Math.floor(k[0] / 1000),
-                open: parseFloat(k[1]), high: parseFloat(k[2]),
-                low: parseFloat(k[3]), close: parseFloat(k[4]),
-                volume: parseFloat(k[5]),
-            });
-        }
+        for (const k of raw) allBars.push(klineToBar(k));
         startTime = raw[raw.length - 1][0] + 1;
 
         // Progressive load: fire early once we have enough data

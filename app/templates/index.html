@@ -88,6 +88,7 @@
       </select>
       <input id="crypto-custom" type="text" placeholder="e.g. SOLUSDT" class="hidden" spellcheck="false">
       <input id="crypto-date" type="date" title="Start replay from">
+      <button id="btn-random-crypto" class="btn-secondary" type="button" data-i18n="btn.random" data-i18n-title="title.random">随机</button>
       <button id="btn-fetch-binance" class="btn-primary" type="button" data-i18n="btn.fetchBinance">Fetch from Binance</button>
       <button id="btn-download-csv" class="btn-secondary hidden" type="button" title="Download fetched data as CSV">
         <svg class="icon" aria-hidden="true"><use href="#icon-download"></use></svg>
@@ -99,6 +100,7 @@
     <div id="tab-ashare" class="tab-content">
       <input id="ashare-code" type="text" placeholder="600519" spellcheck="false" maxlength="6">
       <input id="ashare-date" type="date" title="Start replay from">
+      <button id="btn-random-ashare" class="btn-secondary" type="button" data-i18n="btn.random" data-i18n-title="title.random">随机</button>
       <select id="ashare-adjust" title="复权方式">
         <option value="qfq" data-i18n="opt.qfq">前复权</option>
         <option value="none" data-i18n="opt.none">不复权</option>
@@ -447,6 +449,14 @@
     </div>
 
     <div class="replay-status">
+      <div class="draw-tools">
+        <button id="btn-draw-hline" class="ctrl-btn ctrl-toggle" type="button" data-draw-tool="hline" aria-pressed="false"
+          data-i18n="draw.hline" data-i18n-title="title.drawHline">水平线</button>
+        <button id="btn-draw-ray" class="ctrl-btn ctrl-toggle" type="button" data-draw-tool="ray" aria-pressed="false"
+          data-i18n="draw.ray" data-i18n-title="title.drawRay">射线</button>
+        <button id="btn-draw-clear" class="ctrl-btn ctrl-toggle" type="button"
+          data-i18n="draw.clear" data-i18n-title="title.drawClear">清空画线</button>
+      </div>
       <div class="progress-wrap">
         <input id="progress-bar" type="range" min="0" max="100" value="0" aria-label="回放进度"
           data-i18n-aria-label="progress.label">
@@ -547,6 +557,7 @@ plot(mySlow, title=&quot;Slow SMA&quot;, color=aqua)"></textarea>
   <script src="/static/js/indicators.js"></script>
   <script src="/static/js/pinescript.js"></script>
   <script src="/static/js/chart.js"></script>
+  <script src="/static/js/drawings.js"></script>
   <script src="/static/js/i18n.js"></script>
   <script src="/static/js/rules/crypto.js"></script>
   <script src="/static/js/rules/ashare.js"></script>

@@ -89,7 +89,7 @@ const ChartManager = {
         // ── Click-to-pick TP/SL: chart click handler ──
         const chartEl = document.getElementById('chart-main');
         chartEl.addEventListener('click', (e) => {
-            if (!this._pickMode) return;
+            if (!this._pickMode || (typeof Drawings !== 'undefined' && Drawings.mode)) return;
             const rect = chartEl.getBoundingClientRect();
             const y = e.clientY - rect.top;
             let price;
@@ -114,11 +114,13 @@ const ChartManager = {
             this._resizeObserver.observe(document.getElementById('chart-area'));
         }
         this._scheduleResize();
+        if (typeof Drawings !== 'undefined') Drawings.init();
     },
 
     // ── Pick mode management ──
     enterPickMode(field) {
         // field = 'tp' or 'sl'
+        if (typeof Drawings !== 'undefined') Drawings.setMode(null);
         this._pickMode = field;
         const chartEl = document.getElementById('chart-main');
         chartEl.style.cursor = 'crosshair';
@@ -258,6 +260,7 @@ const ChartManager = {
         if (this.macdHistSeries) this.macdHistSeries.setData([]);
         this._clearPositionLines();
         this.clearCustomSeries();
+        if (typeof Drawings !== 'undefined') Drawings.clear();
     },
 
     _f(arr) { return arr.filter(d => !isNaN(d.value)); },

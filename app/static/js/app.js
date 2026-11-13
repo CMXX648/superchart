@@ -106,25 +106,29 @@
         currentSymbol = symbol;
         btnFetch.disabled = true;
         let earlyStarted = false;
+        const tf = parseInt(tfSelect.value);
+        const originTime = new Date(startDate).getTime() / 1000;
         try {
             showStatus(`Fetching ${symbol} from Binance…`);
-            rawBaseData = await fetchAllBinanceData(symbol, startDate, showStatus, (partialData, isFinal) => {
+            // Once replay runs, background pages must not keep re-opening the spinner overlay.
+            const onProgress = (msg) => { if (!earlyStarted) showStatus(msg); };
+            rawBaseData = await fetchAllBinanceData(symbol, startDate, onProgress, (partialData, isFinal) => {
                 if (!earlyStarted && !isFinal) {
                     // First chunk — start replay immediately
                     earlyStarted = true;
                     TradingEngine.setAssetType('crypto');
                     TradingEngine.reset();
                     rawBaseData = partialData;
-                    startReplay(partialData, parseInt(tfSelect.value), { market: 'crypto', symbol: currentSymbol, interval: '5m', adjust: 'none', baseMinutes: 5, saveCandles: true });
-                    showStatus(`Playing with ${partialData.length} bars… still fetching more in background`);
+                    startReplay(partialData, tf, { market: 'crypto', symbol: currentSymbol, interval: '5m', adjust: 'none', baseMinutes: 5, saveCandles: true, originTime });
+                    showStatus(`Playing with ${partialData.length} bars… still fetching more in background`, 'success', 4000);
                 } else if (isFinal) {
                     // Background fetch finished — silently extend the data
                     rawBaseData = partialData;
-                    ReplayEngine.baseData = partialData;
+                    ReplayEngine.extendData(partialData);
                     showStatus(`✓ ${partialData.length} bars fully loaded.`, 'success');
                     setTimeout(hideStatus, 3000);
                 }
-            });
+            }, tf);
             localStorage.setItem('lbr_start_date', startDate);
 
             if (!earlyStarted) {
@@ -133,7 +137,7 @@
                 showStatus(`✓ ${rawBaseData.length} bars loaded.`, 'success');
                 TradingEngine.setAssetType('crypto');
                 TradingEngine.reset();
-                startReplay(rawBaseData, parseInt(tfSelect.value), { market: 'crypto', symbol: currentSymbol, interval: '5m', adjust: 'none', baseMinutes: 5, saveCandles: true });
+                startReplay(rawBaseData, tf, { market: 'crypto', symbol: currentSymbol, interval: '5m', adjust: 'none', baseMinutes: 5, saveCandles: true, originTime });
                 setTimeout(hideStatus, 3000);
             }
 
@@ -141,6 +145,29 @@
             btnDownload.onclick = () => downloadCSV(rawBaseData, `${symbol}_5m.csv`);
         } catch (err) { showStatus('Error: ' + err.message, 'error'); console.error(err); }
         btnFetch.disabled = false;
+    });
+
+    // ─── Random start: only fills the date box; fetching stays on the fetch button ───
+    const btnRandomCrypto = $('#btn-random-crypto');
+    btnRandomCrypto.addEventListener('click', async () => {
+        if (MarketController.id === 'ashare') return;
+        const symbol = cryptoSymbol.value === '__custom__' ? cryptoCustom.value.trim().toUpperCase() : cryptoSymbol.value;
+        if (!symbol) { alert('Enter a symbol'); return; }
+        const tf = parseInt(tfSelect.value);
+        btnRandomCrypto.disabled = true;
+        try {
+            showStatus(I18n.t('random.loading'));
+            const earliest = await fetchEarliestBinanceMs(symbol);
+            const date = randomStartDate(earliest, Date.now(), tf);
+            if (!date) {
+                const have = Math.floor((Date.now() - earliest) / (Math.max(tf, 5) * 60000));
+                showStatus(I18n.t('random.tooShort', { need: LOOKBACK_BARS + MIN_REMAINING_BARS, have: have }), 'error');
+            } else {
+                cryptoDate.value = date;
+                showStatus(I18n.t('random.picked', { date: date }), 'success', 4000);
+            }
+        } catch (err) { showStatus('Error: ' + err.message, 'error'); }
+        btnRandomCrypto.disabled = false;
     });
 
     tfSelect.addEventListener('change', () => {
@@ -454,7 +481,7 @@
     // ─── Start Replay ───
     function startReplay(data, tf, meta) {
         const baseMinutes = meta && meta.baseMinutes ? meta.baseMinutes : 5;
-        ReplayEngine.loadData(data, tf, baseMinutes);
+        ReplayEngine.loadData(data, tf, baseMinutes, meta && meta.originTime);
         if (meta && typeof Companion !== 'undefined' && Companion.online) {
             Companion.startSession({
                 market: meta.market,
@@ -726,6 +753,26 @@
         if (btnRecords) btnRecords.addEventListener('click', refreshRecords);
         document.addEventListener('lbr-trade-saved', () => setTimeout(refreshRecords, 400));
         document.addEventListener('lbr-session-ended', () => setTimeout(refreshRecords, 200));
+        const btnRandomAshare = document.getElementById('btn-random-ashare');
+        btnRandomAshare.addEventListener('click', async () => {
+            if (!Companion.online) await Companion.init();
+            if (!Companion.online) { showStatus(I18n.t('fetch.needServer'), 'error'); return; }
+            const code = (document.getElementById('ashare-code').value || '').trim();
+            const adjust = document.getElementById('ashare-adjust').value || 'qfq';
+            if (!/^\d{6}$/.test(code)) { showStatus(I18n.t('fetch.badCode'), 'error'); return; }
+            btnRandomAshare.disabled = true;
+            try {
+                showStatus(I18n.t('random.loading'));
+                const data = await Companion.fetchAshare(code, '', adjust, false, LOOKBACK_BARS, true);
+                const date = new Date(data.origin_time * 1000).toISOString().slice(0, 10);
+                document.getElementById('ashare-date').value = date;
+                showStatus(I18n.t('random.picked', { date: date }), 'success', 4000);
+            } catch (err) {
+                const d = err.data;
+                showStatus(d && d.code === 'too_short' ? I18n.t('random.tooShort', d) : (err.message || String(err)), 'error');
+            }
+            btnRandomAshare.disabled = false;
+        });
         const btnFetchAshare = document.getElementById('btn-fetch-ashare');
         if (btnFetchAshare) {
             btnFetchAshare.addEventListener('click', async () => {
@@ -742,7 +789,7 @@
                 btnFetchAshare.disabled = true;
                 try {
                     showStatus(I18n.t('fetch.loading', { code: code }));
-                    const data = await Companion.fetchAshare(code, start, adjust, refresh);
+                    const data = await Companion.fetchAshare(code, start, adjust, refresh, LOOKBACK_BARS);
                     if (!data.candles || !data.candles.length) throw new Error(I18n.t('fetch.empty'));
                     currentSymbol = code;
                     TradingEngine.setAssetType('ashare');
@@ -751,7 +798,7 @@
                     if (tf) tf.value = '1440';
                     startReplay(data.candles, 1440, {
                         market: 'ashare', symbol: code, interval: '1d', adjust: adjust,
-                        baseMinutes: 1440, saveCandles: false,
+                        baseMinutes: 1440, saveCandles: false, originTime: data.origin_time,
                     });
                     const where = data.from_cache ? I18n.t('fetch.db') : (data.source || I18n.t('fetch.source'));
                     showStatus(I18n.t('fetch.loaded', { count: data.candles.length, where: where }), 'success');

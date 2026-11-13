@@ -2911,7 +2911,8 @@ input[type="range"]::-moz-range-thumb {
     min-height: 38px;
   }
 
-  #btn-open-only {
+  /* Text toggles (仅开盘价, 画线工具) size to their label, not the 38px icon square */
+  .ctrl-toggle {
     width: auto;
     min-width: max-content;
     padding-inline: var(--space-xs);
@@ -3186,4 +3187,24 @@ input[type="range"]::-moz-range-thumb {
   button:active:not(:disabled) {
     transform: none;
   }
+}
+
+/* Drawing tools sit in the right column so the left one keeps its width */
+.draw-tools {
+  display: flex;
+  gap: var(--space-2xs);
+}
+
+.replay-options {
+  flex-wrap: wrap;
+}
+
+/* Let the progress bar give up width before anything overlaps */
+.replay-status #progress-bar {
+  min-width: 72px;
+}
+
+/* User drawing mode (drawings.js); active tool uses .ctrl-active */
+#chart-main.draw-active {
+  cursor: crosshair;
 }

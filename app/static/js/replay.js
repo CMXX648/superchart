@@ -1,12 +1,34 @@
 /* ═══════════════ Replay Engine ═══════════════ */
 
 const SPEED_STOPS = [0.1, 0.25, 0.5, 1, 2, 5, 10, 20];
+const LOOKBACK_BARS = 30;
+
+/** First display candle whose period ends after T: the candle that contains T, or the first one after it. */
+function originIndexOf(agg, originTime, periodSecs) {
+    if (originTime == null) return 0;
+    const i = agg.findIndex(c => c.time + periodSecs > originTime);
+    return i < 0 ? Math.max(0, agg.length - 1) : i;
+}
+
+/**
+ * Keep at most `bars` display candles before the origin as background.
+ * Returns the trimmed base data and the origin index in its aggregation.
+ */
+function lookbackSlice(baseData, tf, baseMinutes, originTime, bars) {
+    const agg = aggregateCandles(baseData, tf);
+    const origin = originIndexOf(agg, originTime, Math.max(tf, baseMinutes) * 60);
+    if (origin <= bars) return { data: baseData, origin };
+    const from = agg[origin - bars].time;
+    return { data: baseData.filter(b => b.time >= from), origin: bars };
+}
 
 const ReplayEngine = {
     baseData: [],
     baseIntervalMinutes: 5,
     currentTF: 60,
     replayIndex: 0,
+    originIndex: 0,   // display index of T; bars before it are background
+    originTime: null,
     isPlaying: false,
     speed: 1,
     speedIndex: 3,
@@ -19,6 +41,7 @@ const ReplayEngine = {
     // so the current aggregated candle builds up progressively
     _subMode: false,
     _baseIdx: 0,
+    _baseOrigin: 0,   // first base index of the origin candle
 
     dom: {},
 
@@ -39,7 +62,7 @@ const ReplayEngine = {
 
         this.dom.progressBar.addEventListener('input', () => {
             const total = this._getAgg().length;
-            this.replayIndex = Math.round((parseInt(this.dom.progressBar.value) / 100) * (total - 1));
+            this.replayIndex = this.originIndex + Math.round((parseInt(this.dom.progressBar.value) / 100) * (total - 1 - this.originIndex));
             // Sync base index to end of this aggregated candle
             if (this._subMode) {
                 this._baseIdx = aggregatedIndexToBaseIndex(this.baseData, this.currentTF, this.replayIndex);
@@ -123,16 +146,34 @@ const ReplayEngine = {
         }
     },
 
-    loadData(data, tf, baseMinutes) {
+    /** @param {number} [originTime] Unix seconds of T. Omitted: start at the first bar. */
+    loadData(data, tf, baseMinutes, originTime) {
         this.pause();
-        this.baseData = data;
         this.baseIntervalMinutes = baseMinutes || 5;
         this.currentTF = tf || 60;
-        this.replayIndex = 0;
-        this._baseIdx = 0;
+        this.originTime = originTime == null ? null : originTime;
+        const sliced = lookbackSlice(data, this.currentTF, this.baseIntervalMinutes, this.originTime, LOOKBACK_BARS);
+        this.baseData = sliced.data;
+        this._setOrigin(sliced.origin);
+        this.replayIndex = this.originIndex;
+        this._baseIdx = this._baseOrigin;
         this._syncSubMode();
         this._updateSpeedLabel();
         this._renderFrame(true);
+    },
+
+    /** Longer series from the same load (background fetch finished). Keeps the first bar and T. */
+    extendData(data) {
+        const first = this.baseData.length ? this.baseData[0].time : -Infinity;
+        this.baseData = data.filter(b => b.time >= first);
+    },
+
+    _setOrigin(index) {
+        this.originIndex = index;
+        const agg = this._getAgg();
+        const t = agg[index] ? agg[index].time : 0;
+        const b = this.baseData.findIndex(c => c.time >= t);
+        this._baseOrigin = b < 0 ? 0 : b;
     },
 
     switchTimeframe(newTF) {
@@ -147,7 +188,8 @@ const ReplayEngine = {
             if (newAgg[i].time <= currentTime) bestIdx = i;
             else break;
         }
-        this.replayIndex = bestIdx;
+        this._setOrigin(originIndexOf(newAgg, this.originTime, Math.max(newTF, this.baseIntervalMinutes) * 60));
+        this.replayIndex = Math.max(bestIdx, this.originIndex);
         this._syncSubMode();
         this._updateSpeedLabel();
         this._renderFrame(true);
@@ -163,10 +205,10 @@ const ReplayEngine = {
     play() {
         if (this.isPlaying) return;
         if (this._subMode) {
-            if (this._baseIdx >= this.baseData.length - 1) this._baseIdx = 0;
+            if (this._baseIdx >= this.baseData.length - 1) this._baseIdx = this._baseOrigin;
         } else {
             const total = this._getAgg().length;
-            if (this.replayIndex >= total - 1) this.replayIndex = 0;
+            if (this.replayIndex >= total - 1) this.replayIndex = this.originIndex;
         }
         this.isPlaying = true;
         this._setPlayVisual(true);
@@ -193,16 +235,16 @@ const ReplayEngine = {
 
     stepBack() {
         if (this._subMode) {
-            if (this._baseIdx > 0) { this._baseIdx--; this._renderFrame(false); }
+            if (this._baseIdx > this._baseOrigin) { this._baseIdx--; this._renderFrame(false); }
         } else {
-            if (this.replayIndex > 0) { this.replayIndex--; this._renderFrame(false); }
+            if (this.replayIndex > this.originIndex) { this.replayIndex--; this._renderFrame(false); }
         }
     },
 
     goToStart() {
         this.pause();
-        this.replayIndex = 0;
-        this._baseIdx = 0;
+        this.replayIndex = this.originIndex;
+        this._baseIdx = this._baseOrigin;
         this._renderFrame(true);
     },
 
@@ -256,7 +298,7 @@ const ReplayEngine = {
             const total = allAgg.length;
             if (total === 0) return;
             if (this.replayIndex >= total) this.replayIndex = total - 1;
-            if (this.replayIndex < 0) this.replayIndex = 0;
+            if (this.replayIndex < this.originIndex) this.replayIndex = this.originIndex;
             visible = allAgg.slice(0, this.replayIndex + 1);
         }
 
@@ -303,12 +345,15 @@ const ReplayEngine = {
 
         // Update UI controls
         const totalAgg = this._getAgg().length;
-        const pct = totalAgg > 1 ? Math.round((this.replayIndex / (totalAgg - 1)) * 100) : 0;
+        const o = this.originIndex, span = totalAgg - 1 - o;
+        const pct = span > 0 ? Math.round(((this.replayIndex - o) / span) * 100) : 0;
         this.dom.progressBar.value = pct;
+        const counter = `${this.replayIndex - o + 1} / ${totalAgg - o}`;
         if (this._subMode) {
-            this.dom.barCounter.textContent = `${this.replayIndex + 1} / ${totalAgg} (base ${this._baseIdx + 1}/${this.baseData.length})`;
+            const bo = this._baseOrigin;
+            this.dom.barCounter.textContent = `${counter} (base ${this._baseIdx - bo + 1}/${this.baseData.length - bo})`;
         } else {
-            this.dom.barCounter.textContent = `${this.replayIndex + 1} / ${totalAgg}`;
+            this.dom.barCounter.textContent = counter;
         }
         if (displayCandle) {
             const dt = new Date(displayCandle.time * 1000);

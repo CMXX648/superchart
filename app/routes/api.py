@@ -9,6 +9,32 @@ from app.services.ashare import date_to_unix, fetch_frame, frame_to_candles
 
 bp = Blueprint("api", __name__)
 
+LOOKBACK_BARS = 30
+
+
+def lookback_window(candles, start_unix, lookback):
+    """Bars from up to `lookback` bars before the first bar at or after start, to the end.
+
+    Counts bars, not calendar days. Returns (bars, origin_time); empty when start is after the data.
+    """
+    origin = next((i for i, bar in enumerate(candles) if bar["time"] >= start_unix), None)
+    if origin is None:
+        return [], None
+    return candles[max(0, origin - lookback):], candles[origin]["time"]
+
+
+def _window(candles, start, lookback):
+    if not start:
+        return candles, None
+    return lookback_window(candles, date_to_unix(start), lookback)
+
+
+def _int_arg(name, limit):
+    try:
+        return max(0, min(int(request.args.get(name) or 0), limit))
+    except ValueError:
+        return 0
+
 
 @bp.get("/health")
 def health():
@@ -97,33 +123,33 @@ def ashare_klines():
     source = request.args.get("source") or "auto"
     refresh = request.args.get("refresh") == "1"
     start = request.args.get("start") or ""
+    lookback = _int_arg("lookback", LOOKBACK_BARS)
     cached = [] if refresh else db.load_candles("ashare", code, "1d", adjust)
     if cached and not refresh:
-        if start:
-            start_unix = date_to_unix(start)
-            cached = [bar for bar in cached if bar["time"] >= start_unix]
+        candles, origin_time = _window(cached, start, lookback)
         return jsonify({
             "symbol": code, "name": code, "adjust": adjust, "source": "database",
-            "base_interval": "1d", "candles": cached, "from_cache": True,
+            "base_interval": "1d", "candles": candles, "from_cache": True,
+            "origin_time": origin_time,
         })
     try:
         frame, name, chosen = fetch_frame(code, source, adjust)
     except Exception as exc:
         if cached:
+            candles, origin_time = _window(cached, start, lookback)
             return jsonify({
                 "symbol": code, "name": code, "adjust": adjust, "source": "database",
-                "base_interval": "1d", "candles": cached, "from_cache": True,
-                "warning": str(exc),
+                "base_interval": "1d", "candles": candles, "from_cache": True,
+                "origin_time": origin_time, "warning": str(exc),
             })
         return jsonify({"error": "failed to load A-share bars: %s" % exc}), 502
     candles = frame_to_candles(frame)
     db.upsert_candles("ashare", code, "1d", adjust, candles)
-    if start:
-        start_unix = date_to_unix(start)
-        candles = [bar for bar in candles if bar["time"] >= start_unix]
+    candles, origin_time = _window(candles, start, lookback)
     return jsonify({
         "symbol": code, "name": name, "adjust": adjust, "source": chosen,
         "base_interval": "1d", "candles": candles, "from_cache": False,
+        "origin_time": origin_time,
     })
 
 

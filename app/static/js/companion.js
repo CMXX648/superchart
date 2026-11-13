@@ -184,12 +184,13 @@ const Companion = {
         return response.json();
     },
 
-    async fetchAshare(code, start, adjust, refresh) {
+    async fetchAshare(code, start, adjust, refresh, lookback) {
         const params = new URLSearchParams({
             code: code,
             start: start || '',
             adjust: adjust || 'qfq',
             refresh: refresh ? '1' : '0',
+            lookback: String(lookback || 0),
         });
         const response = await fetch('/api/ashare/klines?' + params.toString());
         const data = await response.json();

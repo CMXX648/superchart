@@ -20,6 +20,38 @@ function binanceInterval(minutes) {
     return map[minutes] || '5m';
 }
 
+function klineToBar(k) {
+    return {
+        time: Math.floor(k[0] / 1000),
+        open: parseFloat(k[1]), high: parseFloat(k[2]),
+        low: parseFloat(k[3]), close: parseFloat(k[4]),
+        volume: parseFloat(k[5]),
+    };
+}
+
+/**
+ * Start (ms) of the background window: `bars` display candles before the one containing startMs.
+ * Counted on the display timeframe, so 30 x 1h is fetched as 360 x 5m.
+ */
+function lookbackStartMs(startMs, tfMinutes, bars) {
+    const period = Math.max(tfMinutes || 60, 5) * 60000;
+    return Math.floor(startMs / period) * period - bars * period;
+}
+
+/** All 5m bars in [startMs, endMs). */
+async function fetchBinance5m(symbol, startMs, endMs) {
+    const bars = [];
+    while (startMs < endMs) {
+        const raw = await fetchBinanceKlinesPage(symbol, '5m', startMs, endMs - 1);
+        if (!raw || raw.length === 0) break;
+        for (const k of raw) bars.push(klineToBar(k));
+        startMs = raw[raw.length - 1][0] + 1;
+        if (raw.length < 1000) break;
+        await new Promise(r => setTimeout(r, 120));
+    }
+    return bars;
+}
+
 /**
  * Build the IDB cache key for a given symbol + date.
  */
@@ -31,7 +63,7 @@ function cacheKey(symbol, startDate) {
  * Check if we have cached data that covers the requested date range.
  * Returns the cached data if it covers the range, or null.
  */
-async function checkCache(symbol, startDate) {
+async function checkCache(symbol, startDate, fromSec) {
     const key = cacheKey(symbol, startDate);
     const cached = await loadFromIDB(key);
     if (cached && cached.length > 0) return cached;
@@ -46,12 +78,12 @@ async function checkCache(symbol, startDate) {
         req.onsuccess = async () => {
             const prefix = symbol.toUpperCase() + '_5m_';
             const matchingKeys = (req.result || []).filter(k => typeof k === 'string' && k.startsWith(prefix));
-            const targetStart = new Date(startDate).getTime() / 1000;
+            const targetStart = fromSec;
 
             for (const mk of matchingKeys) {
                 const data = await loadFromIDB(mk);
                 if (data && data.length > 0 && data[0].time <= targetStart) {
-                    // This cached data starts before our requested date — reuse it
+                    // This cached data covers the background window — reuse it
                     return resolve(data);
                 }
             }
@@ -83,11 +115,18 @@ function mergeData(existing, newData) {
  * @param {Function} [onEarlyData]  called with partial data once we have ~30 days worth,
  *                                  so replay can start while background fetch continues.
  *                                  Also called with final complete data at the end.
+ * @param {number} [tfMinutes]      display timeframe; the background window is LOOKBACK_BARS of it.
  */
-async function fetchAllBinanceData(symbol, startDate, onProgress, onEarlyData) {
+async function fetchAllBinanceData(symbol, startDate, onProgress, onEarlyData, tfMinutes) {
+    const fromMs = lookbackStartMs(new Date(startDate).getTime(), tfMinutes, LOOKBACK_BARS);
     // Check cache
     if (onProgress) onProgress('Checking local cache…');
-    const cached = await checkCache(symbol, startDate);
+    let cached = await checkCache(symbol, startDate, fromMs / 1000);
+    // Old caches for this date often start at T: fetch the missing background prefix.
+    if (cached && cached.length > 0 && cached[0].time * 1000 > fromMs) {
+        if (onProgress) onProgress('Fetching earlier bars…');
+        cached = mergeData(await fetchBinance5m(symbol, fromMs, cached[0].time * 1000), cached);
+    }
 
     let startTime;
     if (cached && cached.length > 0) {
@@ -95,7 +134,7 @@ async function fetchAllBinanceData(symbol, startDate, onProgress, onEarlyData) {
         startTime = lastCachedTime + 1;
         if (onProgress) onProgress(`Found ${cached.length} cached bars. Fetching updates…`);
     } else {
-        startTime = new Date(startDate).getTime();
+        startTime = fromMs;
     }
 
     const endTime = Date.now();
@@ -116,14 +155,7 @@ async function fetchAllBinanceData(symbol, startDate, onProgress, onEarlyData) {
         const raw = await fetchBinanceKlinesPage(symbol, '5m', startTime, endTime);
         if (!raw || raw.length === 0) break;
 
-        for (const k of raw) {
-            allBars.push({
-                time: Math.floor(k[0] / 1000),
-                open: parseFloat(k[1]), high: parseFloat(k[2]),
-                low: parseFloat(k[3]), close: parseFloat(k[4]),
-                volume: parseFloat(k[5]),
-            });
-        }
+        for (const k of raw) allBars.push(klineToBar(k));
         startTime = raw[raw.length - 1][0] + 1;
 
         // Progressive load: fire early once we have enough data

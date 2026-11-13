@@ -34,7 +34,9 @@ KLinePlayground/       只复用行情代码，不提交
 
 bridge 下单：`place_trade`、`close_trade`、`close_all` 都经 `TradingEngine` 走当前市场规则。A 股模式下整手、只做多、T+1、现金不足整笔拒绝，杠杆固定 1；拒绝时回 `{error, market}` 给 Python。`load_data` 的 `asset_type` 在 A 股模式下不生效。SDK 的事件处理放到单独任务，`on_candle` 里 `await place_trade()` 能拿到回复。验收：`tests/js/bridge_rules.test.js`（node 跑真实前端文件）和 `tests/test_bridge_sdk.py`，未在真实浏览器联调。
 
-未做：逐根决策；`trade_open`/`trade_close` 事件尚无调用方。随机起点、前置 30 根、水平线与射线的口径在 `docs/FUSION_DESIGN.md` 第 17 节，未实现。
+前置 30 根（第 17.3 节）：加密货币和 A 股获取后，`ReplayEngine.originIndex` 指向起点 T，T 之前最多 30 根当前显示周期的 K 线是背景，第一帧可见；到开头、后退、进度和根数计数都以 T 为 0，慢速子 K 线不退入背景。加密货币按显示周期向前换算请求窗口，缓存缺前缀时补拉并写回原键；A 股 `GET /api/ashare/klines` 加 `lookback`（最多 30，默认 0 即旧行为），两条返回路径都按交易日根数截取并带 `origin_time`。纯函数 `lookbackSlice`、`lookbackStartMs`（node：`tests/js/lookback.test.js`）和 `api.lookback_window`（`tests/test_ashare_window.py`）。未在真实浏览器里看过。
+
+未做：逐根决策；`trade_open`/`trade_close` 事件尚无调用方。第 17 节的随机起点、水平线与射线未实现。
 
 ## 提交
 

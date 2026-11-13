@@ -106,6 +106,8 @@
         currentSymbol = symbol;
         btnFetch.disabled = true;
         let earlyStarted = false;
+        const tf = parseInt(tfSelect.value);
+        const originTime = new Date(startDate).getTime() / 1000;
         try {
             showStatus(`Fetching ${symbol} from Binance…`);
             rawBaseData = await fetchAllBinanceData(symbol, startDate, showStatus, (partialData, isFinal) => {
@@ -115,16 +117,16 @@
                     TradingEngine.setAssetType('crypto');
                     TradingEngine.reset();
                     rawBaseData = partialData;
-                    startReplay(partialData, parseInt(tfSelect.value), { market: 'crypto', symbol: currentSymbol, interval: '5m', adjust: 'none', baseMinutes: 5, saveCandles: true });
+                    startReplay(partialData, tf, { market: 'crypto', symbol: currentSymbol, interval: '5m', adjust: 'none', baseMinutes: 5, saveCandles: true, originTime });
                     showStatus(`Playing with ${partialData.length} bars… still fetching more in background`);
                 } else if (isFinal) {
                     // Background fetch finished — silently extend the data
                     rawBaseData = partialData;
-                    ReplayEngine.baseData = partialData;
+                    ReplayEngine.extendData(partialData);
                     showStatus(`✓ ${partialData.length} bars fully loaded.`, 'success');
                     setTimeout(hideStatus, 3000);
                 }
-            });
+            }, tf);
             localStorage.setItem('lbr_start_date', startDate);
 
             if (!earlyStarted) {
@@ -133,7 +135,7 @@
                 showStatus(`✓ ${rawBaseData.length} bars loaded.`, 'success');
                 TradingEngine.setAssetType('crypto');
                 TradingEngine.reset();
-                startReplay(rawBaseData, parseInt(tfSelect.value), { market: 'crypto', symbol: currentSymbol, interval: '5m', adjust: 'none', baseMinutes: 5, saveCandles: true });
+                startReplay(rawBaseData, tf, { market: 'crypto', symbol: currentSymbol, interval: '5m', adjust: 'none', baseMinutes: 5, saveCandles: true, originTime });
                 setTimeout(hideStatus, 3000);
             }
 
@@ -454,7 +456,7 @@
     // ─── Start Replay ───
     function startReplay(data, tf, meta) {
         const baseMinutes = meta && meta.baseMinutes ? meta.baseMinutes : 5;
-        ReplayEngine.loadData(data, tf, baseMinutes);
+        ReplayEngine.loadData(data, tf, baseMinutes, meta && meta.originTime);
         if (meta && typeof Companion !== 'undefined' && Companion.online) {
             Companion.startSession({
                 market: meta.market,
@@ -742,7 +744,7 @@
                 btnFetchAshare.disabled = true;
                 try {
                     showStatus(I18n.t('fetch.loading', { code: code }));
-                    const data = await Companion.fetchAshare(code, start, adjust, refresh);
+                    const data = await Companion.fetchAshare(code, start, adjust, refresh, LOOKBACK_BARS);
                     if (!data.candles || !data.candles.length) throw new Error(I18n.t('fetch.empty'));
                     currentSymbol = code;
                     TradingEngine.setAssetType('ashare');
@@ -751,7 +753,7 @@
                     if (tf) tf.value = '1440';
                     startReplay(data.candles, 1440, {
                         market: 'ashare', symbol: code, interval: '1d', adjust: adjust,
-                        baseMinutes: 1440, saveCandles: false,
+                        baseMinutes: 1440, saveCandles: false, originTime: data.origin_time,
                     });
                     const where = data.from_cache ? I18n.t('fetch.db') : (data.source || I18n.t('fetch.source'));
                     showStatus(I18n.t('fetch.loaded', { count: data.candles.length, where: where }), 'success');

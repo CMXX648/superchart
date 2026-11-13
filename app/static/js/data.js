@@ -1,7 +1,10 @@
 /* ═══════════════ Data Fetching: Binance API + CSV + Smart Caching ═══════════════ */
 
+const BINANCE_TIMEOUT_MS = 15000;
+
 /**
  * Fetch klines from Binance public API (single page, max 1000 bars).
+ * A page that does not answer in BINANCE_TIMEOUT_MS rejects instead of hanging the caller.
  */
 async function fetchBinanceKlinesPage(symbol, interval, startTime, endTime) {
     const url = new URL('https://api.binance.com/api/v3/klines');
@@ -10,9 +13,18 @@ async function fetchBinanceKlinesPage(symbol, interval, startTime, endTime) {
     url.searchParams.set('startTime', startTime);
     if (endTime) url.searchParams.set('endTime', endTime);
     url.searchParams.set('limit', '1000');
-    const res = await fetch(url.toString());
-    if (!res.ok) throw new Error(`Binance API error: ${res.status} ${res.statusText}`);
-    return res.json();
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), BINANCE_TIMEOUT_MS);
+    try {
+        const res = await fetch(url.toString(), { signal: ctrl.signal });
+        if (!res.ok) throw new Error(`Binance API error: ${res.status} ${res.statusText}`);
+        return await res.json();
+    } catch (err) {
+        if (err.name === 'AbortError') throw new Error(`Binance request timed out after ${BINANCE_TIMEOUT_MS / 1000}s`);
+        throw err;
+    } finally {
+        clearTimeout(timer);
+    }
 }
 
 function binanceInterval(minutes) {
